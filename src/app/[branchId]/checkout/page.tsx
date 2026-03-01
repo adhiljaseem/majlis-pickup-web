@@ -37,7 +37,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ branchId: s
             const userId = auth.currentUser?.uid || "anonymous_web";
 
             // Run a Firestore Transaction to safely increment the order ID and save the order
-            await runTransaction(db, async (transaction) => {
+            const createdOrderId = await runTransaction(db, async (transaction) => {
                 // 1. Reference to the counter document
                 const counterRef = doc(db, "counters", "orders");
                 const counterDoc = await transaction.get(counterRef);
@@ -99,11 +99,13 @@ export default function CheckoutPage({ params }: { params: Promise<{ branchId: s
                 // 5. Save the order to the actual 'orders' collection with the explicit orderId
                 const newOrderRef = doc(db, "orders", nextOrderId.toString());
                 transaction.set(newOrderRef, orderData);
+
+                return nextOrderId;
             });
 
             // 3. Clear local cart & redirect
             clearCart();
-            router.push(`/${branchId}/success`);
+            router.push(`/${branchId}/success?orderId=${createdOrderId}&phone=${encodeURIComponent(phone)}`);
 
         } catch (err: unknown) {
             console.error("Error creating order:", err);

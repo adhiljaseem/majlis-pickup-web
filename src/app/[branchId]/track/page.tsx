@@ -1,135 +1,107 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
-import { db, ensureAuth } from "../../../lib/firebase";
+import { useSearchParams, useRouter } from "next/navigation";
+import { useState, useEffect, use, Suspense } from "react";
+import { db } from "../../../lib/firebase";
 import { doc, onSnapshot } from "firebase/firestore";
-import { CheckCircle2, Car, Loader2, ArrowLeft } from "lucide-react";
+import { Loader2, ArrowLeft, Package, CheckCircle, CheckCircle2, Car, XCircle } from "lucide-react";
 import Link from "next/link";
 
-
-// The ordered list of statuses as provided by the user
-const STATUS_STEPS = [
-    "Pending",
-    "Confirmed",
-    "Preparing Order",
-    "Ready for Pickup",
-    "Picked Up"
-];
-
-// Helper to get step index
-const getStepIndex = (status: string) => {
-    // If status is "confirmed" (old lowercase), default it to 1
-    if (status === "confirmed") return 1;
-    const index = STATUS_STEPS.indexOf(status);
-    return index === -1 ? 0 : index;
-};
-
 interface OrderData {
-    id: string;
-    customerName?: string;
-    totalAmount?: number;
-    carNumber?: string;
     status: string;
-    userMobile?: string;
+    customerName: string;
+    userMobile: string;
+    carNumber: string;
+    items: any[];
+    totalAmount: number;
 }
 
-export default function TrackOrderPage({ params }: { params: Promise<{ branchId: string }> }) {
-    const { branchId } = use(params);
+const STEPS = [
+    { id: "confirmed", label: "Order Confirmed", icon: CheckCircle2 },
+    { id: "preparing", label: "Preparing Order", icon: Package },
+    { id: "ready_for_pickup", label: "Ready for Pickup", icon: Car },
+    { id: "completed", label: "Completed", icon: CheckCircle }
+];
 
-    const [orderId, setOrderId] = useState("");
-    const [phone, setPhone] = useState("");
+function TrackContent({ branchId }: { branchId: string }) {
+    const searchParams = useSearchParams();
+    const router = useRouter();
 
-    const [loading, setLoading] = useState(false);
+    const urlOrderId = searchParams.get("orderId") || "";
+    const urlPhone = searchParams.get("phone") || "";
+
+    const [orderId, setOrderId] = useState(urlOrderId);
+    const [phone, setPhone] = useState(urlPhone);
+
+    const [isTracking, setIsTracking] = useState(!!urlOrderId && !!urlPhone);
+    const [loading, setLoading] = useState(!!urlOrderId && !!urlPhone);
     const [error, setError] = useState<string | null>(null);
     const [order, setOrder] = useState<OrderData | null>(null);
 
-    // Clean up listener when unmounting or searching again
     useEffect(() => {
-        let unsubscribe: (() => void) | undefined;
-        return () => {
-            if (unsubscribe) unsubscribe();
-        };
-    }, []);
+        if (!isTracking || !orderId || !phone) return;
 
-    const handleSearch = async (e: React.FormEvent) => {
+        setLoading(true);
+        setError(null);
+
+        const orderRef = doc(db, "orders", orderId);
+
+        const unsubscribe = onSnapshot(orderRef, (docSnap) => {
+            if (!docSnap.exists()) {
+                setError("Order not found. Please check your Order ID.");
+                setLoading(false);
+                setOrder(null);
+                return;
+            }
+
+            const data = docSnap.data() as OrderData;
+
+            // Validate phone number for basic security
+            if (data.userMobile !== phone) {
+                setError("Mobile number does not match the order records.");
+                setLoading(false);
+                setOrder(null);
+                return;
+            }
+
+            setOrder(data);
+            setLoading(false);
+        }, (err) => {
+            console.error("Error fetching order:", err);
+            setError("Unable to track order right now.");
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, [isTracking, orderId, phone]);
+
+    const handleStartTracking = (e: React.FormEvent) => {
         e.preventDefault();
-
-        if (!orderId || !phone) {
-            setError("Please enter both your Order ID and Phone Number.");
+        if (!orderId.trim() || !phone.trim()) {
+            setError("Please provide both Order ID and Mobile Number");
             return;
         }
 
-        setError(null);
-        setLoading(true);
-        setOrder(null);
-
-        try {
-            await ensureAuth();
-
-            // Set up a real-time listener for the specific order document
-            const orderRef = doc(db, "orders", orderId.trim());
-
-            onSnapshot(orderRef, (docSnap) => {
-                setLoading(false);
-
-                if (!docSnap.exists()) {
-                    setError("Order not found. Please check your Order ID.");
-                    setOrder(null);
-                    return;
-                }
-
-                const data = docSnap.data();
-
-                // Simple security check: phone number must match (strip spaces just in case)
-                const dbPhone = (data.userMobile || "").replace(/\s+/g, "");
-                const inputPhone = phone.replace(/\s+/g, "");
-
-                // Check if the DB phone ends with the input phone to allow missing country codes
-                if (dbPhone === inputPhone || dbPhone.endsWith(inputPhone) || inputPhone.endsWith(dbPhone)) {
-                    setOrder({ id: docSnap.id, ...data } as OrderData);
-                    setError(null);
-                } else {
-                    setError("Phone number does not match our records for this order.");
-                    setOrder(null);
-                }
-            }, (err: { code?: string; message: string }) => {
-                console.error("Firestore Listen Error:", err);
-                if (err.code === 'permission-denied') {
-                    setError("SECURITY ERROR: Database rules prevent reading this order. Please update Firestore rules to allow read access to the 'orders' collection.");
-                } else {
-                    setError("Could not retrieve tracking details. Please try again.");
-                }
-                setLoading(false);
-            });
-
-        } catch (err: unknown) {
-            console.error("Setup Error:", err);
-            const errorObj = err as { code?: string };
-            if (errorObj.code === 'permission-denied') {
-                setError("SECURITY ERROR: Database rules prevent reading this order. Please update Firestore rules.");
-            } else {
-                setError("Something went wrong. Please check your connection.");
-            }
-            setLoading(false);
-        }
+        // Update URL to support sharing/refreshing
+        router.replace(`/${branchId}/track?orderId=${orderId}&phone=${encodeURIComponent(phone)}`);
+        setIsTracking(true);
     };
 
-    return (
-        <div className="max-w-xl mx-auto space-y-8 animate-in fade-in duration-500 pb-12">
-            <div className="flex items-center gap-4">
-                <Link
-                    href={`/${branchId}`}
-                    className="w-10 h-10 flex items-center justify-center rounded-full bg-white border border-neutral-200 text-neutral-600 hover:bg-neutral-50 transition-colors shadow-sm"
-                >
-                    <ArrowLeft className="w-5 h-5" />
-                </Link>
-                <h1 className="text-2xl font-bold tracking-tight">Track Your Order</h1>
-            </div>
+    if (!isTracking) {
+        return (
+            <div className="max-w-md mx-auto space-y-8 animate-in fade-in duration-500">
+                <div className="flex items-center gap-4">
+                    <Link
+                        href={`/${branchId}`}
+                        className="w-10 h-10 flex items-center justify-center rounded-full bg-white border border-neutral-200 text-neutral-600 hover:bg-neutral-50 transition-colors"
+                    >
+                        <ArrowLeft className="w-5 h-5" />
+                    </Link>
+                    <h1 className="text-2xl font-bold">Track Order</h1>
+                </div>
 
-            {/* Tracking Search Form */}
-            {!order && (
-                <div className="bg-white p-6 sm:p-8 rounded-3xl border border-neutral-200 shadow-sm">
-                    <p className="text-neutral-500 text-sm mb-6">Enter your details below to see the live status of your Web Pickup order.</p>
+                <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-neutral-100">
+                    <p className="text-neutral-500 mb-6">Enter your details to track your order in real-time.</p>
 
                     {error && (
                         <div className="bg-red-50 text-red-600 p-4 rounded-xl text-sm font-medium border border-red-100 mb-6">
@@ -137,141 +109,168 @@ export default function TrackOrderPage({ params }: { params: Promise<{ branchId:
                         </div>
                     )}
 
-                    <form onSubmit={handleSearch} className="space-y-4">
+                    <form onSubmit={handleStartTracking} className="space-y-4">
                         <div>
                             <label className="block text-sm font-semibold text-neutral-700 mb-2">Order ID</label>
                             <input
                                 type="text"
                                 value={orderId}
                                 onChange={(e) => setOrderId(e.target.value)}
-                                placeholder="e.g. 10051"
-                                className="w-full p-4 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none font-medium text-neutral-900 placeholder:text-neutral-400"
+                                placeholder="e.g. 10001"
+                                className="w-full p-4 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none font-bold text-neutral-900 placeholder:font-normal placeholder:text-neutral-400"
                                 required
                             />
                         </div>
-
                         <div>
-                            <label className="block text-sm font-semibold text-neutral-700 mb-2">Phone Number</label>
+                            <label className="block text-sm font-semibold text-neutral-700 mb-2">Mobile Number</label>
                             <input
-                                type="tel"
+                                type="text"
                                 value={phone}
                                 onChange={(e) => setPhone(e.target.value)}
-                                placeholder="e.g. 12345678"
-                                className="w-full p-4 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none font-medium text-neutral-900 placeholder:text-neutral-400"
+                                placeholder="e.g. 33123456"
+                                className="w-full p-4 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none font-bold text-neutral-900 placeholder:font-normal placeholder:text-neutral-400"
                                 required
                             />
                         </div>
 
                         <button
                             type="submit"
-                            disabled={loading || !orderId || !phone}
-                            className="w-full mt-4 bg-neutral-900 hover:bg-neutral-800 disabled:bg-neutral-300 text-white py-4 rounded-2xl font-bold text-lg flex justify-center items-center gap-2 transition-colors shadow-sm"
+                            className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-4 rounded-2xl font-bold text-lg transition-colors shadow-lg shadow-indigo-500/20 mt-4"
                         >
-                            {loading ? (
-                                <Loader2 className="w-5 h-5 animate-spin" />
-                            ) : (
-                                "Track Order"
-                            )}
+                            Track Now
                         </button>
                     </form>
                 </div>
-            )}
+            </div>
+        );
+    }
 
-            {/* Live Tracking Result */}
-            {order && (
-                <div className="space-y-6">
-                    {/* Header Summary */}
-                    <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-48 h-48 bg-white rounded-full blur-3xl opacity-10 -translate-y-1/2 translate-x-1/3" />
+    if (loading) {
+        return (
+            <div className="flex flex-col items-center justify-center py-32 space-y-4 animate-in fade-in duration-500">
+                <Loader2 className="w-12 h-12 text-indigo-600 animate-spin" />
+                <p className="text-neutral-500 font-medium">Locating your order...</p>
+            </div>
+        );
+    }
 
-                        <div className="relative z-10">
-                            <div className="flex justify-between items-start mb-6">
-                                <div>
-                                    <p className="text-white/80 text-sm font-medium mb-1">Order #{order.id}</p>
-                                    <h2 className="text-2xl font-bold">{order.customerName || "Customer"}</h2>
-                                </div>
-                                <div className="bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2 text-center">
-                                    <p className="text-white/80 text-[10px] font-bold uppercase tracking-wider mb-0.5">Total</p>
-                                    <p className="font-bold">QAR {order.totalAmount?.toFixed(2) || "0.00"}</p>
-                                </div>
-                            </div>
+    if (error || !order) {
+        return (
+            <div className="max-w-md mx-auto py-20 px-4 text-center animate-in fade-in duration-500">
+                <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <XCircle className="w-10 h-10 text-red-500" />
+                </div>
+                <h2 className="text-2xl font-bold text-neutral-900 mb-2">Order Not Found</h2>
+                <p className="text-neutral-500 mb-8 max-w-sm mx-auto">{error}</p>
+                <button
+                    onClick={() => setIsTracking(false)}
+                    className="bg-neutral-900 text-white px-8 py-3.5 rounded-full font-semibold hover:bg-neutral-800 transition-colors shadow-xl"
+                >
+                    Try Another Order
+                </button>
+            </div>
+        );
+    }
 
-                            <div className="flex items-center gap-2 text-white/90 text-sm bg-black/20 rounded-xl px-4 py-3 w-fit">
-                                <Car className="w-4 h-4" />
-                                <span className="font-medium">{order.carNumber || "No car specified"}</span>
-                            </div>
+    const currentStepIndex = STEPS.findIndex(s => s.id === order.status);
+    const isCancelled = order.status === "cancelled";
+
+    return (
+        <div className="max-w-md mx-auto space-y-6 animate-in fade-in duration-500">
+            <div className="flex items-center gap-4">
+                <Link
+                    href={`/${branchId}`}
+                    className="w-10 h-10 flex items-center justify-center rounded-full bg-white border border-neutral-200 text-neutral-600 hover:bg-neutral-50 transition-colors"
+                >
+                    <ArrowLeft className="w-5 h-5" />
+                </Link>
+                <h1 className="text-2xl font-bold">Track Order</h1>
+            </div>
+
+            {/* Order Header */}
+            <div className="bg-indigo-600 text-white rounded-3xl p-6 sm:p-8 shadow-xl shadow-indigo-500/20 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
+
+                <div className="relative z-10">
+                    <div className="flex justify-between items-start mb-6">
+                        <div>
+                            <p className="text-indigo-200 text-sm font-medium mb-1">Order Number</p>
+                            <p className="text-3xl font-black">{orderId}</p>
+                        </div>
+                        <div className="bg-white/10 px-3 py-1.5 rounded-xl border border-white/20 flex items-center gap-2">
+                            <Car className="w-4 h-4 text-indigo-200" />
+                            <span className="font-bold text-sm tracking-wide">{order.carNumber}</span>
                         </div>
                     </div>
 
-                    {/* Timeline Tracker */}
-                    <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-neutral-200">
-                        <h3 className="font-bold text-lg mb-6 flex items-center justify-between">
-                            Order Status
-                            <span className="text-xs font-semibold bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full border border-indigo-100 uppercase tracking-wider">
-                                Live
-                            </span>
-                        </h3>
+                    <p className="text-indigo-100 font-medium">Customer: <span className="text-white font-bold">{order.customerName}</span></p>
+                </div>
+            </div>
 
-                        <div className="relative">
-                            {/* Vertical Line */}
-                            <div className="absolute left-[21px] top-4 bottom-4 w-0.5 bg-neutral-100 rounded-full" />
-
-                            <div className="space-y-6">
-                                {STATUS_STEPS.map((stepLabel, index) => {
-                                    const currentIdx = getStepIndex(order.status);
-                                    const isCompleted = index < currentIdx;
-                                    const isCurrent = index === currentIdx;
-                                    const isPending = index > currentIdx;
-
-                                    return (
-                                        <div key={stepLabel} className="relative flex gap-4">
-                                            {/* Status Icon */}
-                                            <div className="relative z-10 bg-white pt-1 pb-1">
-                                                <div className={`w-11 h-11 rounded-full flex items-center justify-center border-4 border-white shadow-sm transition-all duration-500
-                                                    ${isCompleted ? 'bg-indigo-500 text-white' : ''}
-                                                    ${isCurrent ? 'bg-indigo-600 text-white shadow-indigo-500/30' : ''}
-                                                    ${isPending ? 'bg-neutral-100 text-neutral-400 border-neutral-50' : ''}
-                                                `}>
-                                                    {isCompleted ? <CheckCircle2 className="w-5 h-5" /> :
-                                                        isCurrent ? <Loader2 className="w-5 h-5 animate-spin" /> :
-                                                            <div className="w-2 h-2 rounded-full bg-current" />}
-                                                </div>
-                                            </div>
-
-                                            {/* Status Text */}
-                                            <div className="pt-2 flex-1 pb-2">
-                                                <p className={`font-bold text-lg tracking-tight transition-colors duration-500
-                                                    ${isCompleted ? 'text-neutral-900' : ''}
-                                                    ${isCurrent ? 'text-indigo-600' : ''}
-                                                    ${isPending ? 'text-neutral-400' : ''}
-                                                `}>
-                                                    {stepLabel}
-                                                </p>
-                                                {isCurrent && (
-                                                    <p className="text-sm text-neutral-500 mt-1">
-                                                        {index === 0 && "We have received your order request."}
-                                                        {index === 1 && "Your order is confirmed."}
-                                                        {index === 2 && "Our team is packing your items now."}
-                                                        {index === 3 && "Drive to the branch, we are ready!"}
-                                                        {index === 4 && "Order completed. Thank you!"}
-                                                    </p>
-                                                )}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
+            {/* Live Timeline */}
+            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-neutral-100 shadow-sm relative">
+                {isCancelled ? (
+                    <div className="flex flex-col items-center justify-center py-10 text-center">
+                        <XCircle className="w-16 h-16 text-red-500 mb-4" />
+                        <h3 className="text-xl font-bold text-neutral-900">Order Cancelled</h3>
+                        <p className="text-neutral-500 mt-2">This order has been cancelled by the branch.</p>
                     </div>
+                ) : (
+                    <div className="space-y-8 relative">
+                        {/* Connecting line */}
+                        <div className="absolute left-[1.3rem] top-4 bottom-8 w-0.5 bg-neutral-100 -z-0" />
 
-                    <button
-                        onClick={() => setOrder(null)}
-                        className="w-full text-center py-4 text-neutral-500 font-medium hover:text-neutral-900 transition-colors"
-                    >
-                        Track another order
-                    </button>
+                        {STEPS.map((step, index) => {
+                            const isCompleted = currentStepIndex >= index;
+                            const isCurrent = currentStepIndex === index;
+                            const Icon = step.icon;
+
+                            return (
+                                <div key={step.id} className="relative z-10 flex gap-4 items-start">
+                                    <div className={`w-11 h-11 rounded-full flex items-center justify-center shrink-0 transition-colors duration-500 ${isCurrent ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30 scale-110' :
+                                        isCompleted ? 'bg-indigo-100 text-indigo-600' :
+                                            'bg-neutral-50 border-2 border-neutral-200 text-neutral-300'
+                                        }`}>
+                                        <Icon className={`w-5 h-5 ${isCurrent && index !== (STEPS.length - 1) ? 'animate-pulse' : ''}`} />
+                                    </div>
+
+                                    <div className={`pt-2.5 transition-opacity duration-500 ${!isCompleted && !isCurrent ? 'opacity-40' : 'opacity-100'}`}>
+                                        <h4 className={`font-bold text-base ${isCurrent ? 'text-indigo-600' : 'text-neutral-800'}`}>
+                                            {step.label}
+                                        </h4>
+                                        {isCurrent && (
+                                            <p className="text-sm text-neutral-500 mt-1 font-medium animate-in fade-in duration-500">
+                                                {step.id === 'confirmed' && 'Branch has received your order.'}
+                                                {step.id === 'preparing' && 'Staff are bagging your items now.'}
+                                                {step.id === 'ready_for_pickup' && 'Park in the Express Zone, it is ready!'}
+                                                {step.id === 'completed' && 'Delivered to your car. Thank you!'}
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
+
+            {!isCancelled && (
+                <div className="text-center">
+                    <p className="text-xs font-bold uppercase tracking-wider text-neutral-400 mb-2 flex justify-center items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                        Live Updates Active
+                    </p>
                 </div>
             )}
         </div>
+    );
+}
+
+export default function TrackOrderPage({ params }: { params: Promise<{ branchId: string }> }) {
+    const { branchId } = use(params);
+    return (
+        <Suspense fallback={<div className="flex justify-center py-32"><Loader2 className="w-10 h-10 text-indigo-600 animate-spin" /></div>}>
+            <TrackContent branchId={branchId} />
+        </Suspense>
     );
 }
