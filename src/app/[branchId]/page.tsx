@@ -10,16 +10,18 @@ import { useState as useImageState } from "react";
 import { ProductSkeleton } from "../../components/Skeleton";
 import { hapticSoft } from "../../lib/haptics";
 import NextLink from "next/link";
+import Image from "next/image";
 
 function ProductImage({ src, alt }: { src: string; alt: string }) {
     const [failed, setFailed] = useImageState(false);
     if (failed) return <div className="w-full h-full flex items-center justify-center text-neutral-300 font-medium text-xs">No Image</div>;
     return (
-        <img
+        <Image
             src={src}
             alt={alt}
-            loading="lazy"
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            fill
+            sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
+            className="object-cover group-hover:scale-105 transition-transform duration-500"
             onError={() => setFailed(true)}
         />
     );

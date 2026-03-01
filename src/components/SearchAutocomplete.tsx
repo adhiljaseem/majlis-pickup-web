@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Search, X } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { typesenseClient } from "../lib/typesense";
 import { resolveForBranch } from "../hooks/useTypesenseSearch";
 import { TypesenseProduct, Product } from "../types";
@@ -143,7 +144,7 @@ export function SearchAutocomplete({
                                     {/* Thumbnail */}
                                     <div className="w-12 h-12 rounded-xl bg-neutral-50 border border-neutral-100 overflow-hidden flex-shrink-0 flex items-center justify-center p-1">
                                         {p.imageUrl
-                                            ? <img src={p.imageUrl} alt={p.name} className="w-full h-full object-contain" />
+                                            ? <Image src={p.imageUrl} alt={p.name} width={48} height={48} className="w-full h-full object-contain" />
                                             : <div className="text-[8px] text-neutral-300 font-bold">IMG</div>
                                         }
                                     </div>

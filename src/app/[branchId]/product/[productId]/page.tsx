@@ -9,6 +9,7 @@ import { resolveForBranch } from "../../../../hooks/useTypesenseSearch";
 import { Product, TypesenseProduct } from "../../../../types";
 import { hapticSoft } from "../../../../lib/haptics";
 import NextLink from "next/link";
+import Image from "next/image";
 
 export default function ProductDetailsPage({
     params: paramsPromise,
@@ -146,10 +147,11 @@ export default function ProductDetailsPage({
                 {/* Product Image Gallery */}
                 <div className="relative aspect-square bg-neutral-50 rounded-[2.5rem] overflow-hidden border border-neutral-100 p-8 flex items-center justify-center">
                     {product.imageUrl ? (
-                        <img
+                        <Image
                             src={product.imageUrl}
                             alt={product.name}
-                            className="max-h-full max-w-full object-contain hover:scale-105 transition-transform duration-700"
+                            fill
+                            className="object-contain hover:scale-105 transition-transform duration-700 p-8"
                         />
                     ) : (
                         <div className="text-neutral-300 font-bold">No Image</div>
@@ -234,7 +236,7 @@ export default function ProductDetailsPage({
                             <NextLink key={p.id} href={`/${params.branchId}/product/${p.id}`} className="group">
                                 <div className="aspect-square rounded-3xl bg-neutral-50 p-6 flex items-center justify-center mb-3 border border-neutral-100 group-hover:border-indigo-100 transition-colors relative overflow-hidden">
                                     {p.imageUrl ? (
-                                        <img src={p.imageUrl} alt={p.name} className="max-h-full max-w-full object-contain group-hover:scale-110 transition-transform duration-500" />
+                                        <Image src={p.imageUrl} alt={p.name} fill sizes="(max-width: 768px) 50vw, 25vw" className="object-contain group-hover:scale-110 transition-transform duration-500 p-6" />
                                     ) : (
                                         <div className="text-[10px] text-neutral-300">No Image</div>
                                     )}
