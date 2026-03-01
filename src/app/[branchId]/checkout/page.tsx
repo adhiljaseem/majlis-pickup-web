@@ -167,14 +167,25 @@ export default function CheckoutPage({ params }: { params: Promise<{ branchId: s
 
                         <div>
                             <label className="block text-sm font-semibold text-neutral-700 mb-2">Phone Number</label>
-                            <input
-                                type="tel"
-                                value={phone}
-                                onChange={(e) => setPhone(e.target.value)}
-                                placeholder="+1 234 567 8900"
-                                className="w-full p-4 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none font-medium text-neutral-900 placeholder:text-neutral-400"
-                                required
-                            />
+                            <div className="flex bg-neutral-50 border border-neutral-200 rounded-2xl focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500 transition-all overflow-hidden items-center group">
+                                <span className="pl-4 pr-3 py-4 text-neutral-500 font-bold border-r border-neutral-200/60 select-none bg-neutral-100/50 group-focus-within:text-indigo-600 transition-colors">
+                                    +974
+                                </span>
+                                <input
+                                    type="tel"
+                                    value={phone}
+                                    onChange={(e) => {
+                                        const val = e.target.value.replace(/\D/g, '').slice(0, 8);
+                                        setPhone(val);
+                                    }}
+                                    placeholder="33XX XXXX"
+                                    maxLength={8}
+                                    pattern="\d{8}"
+                                    title="Enter 8 digit Qatar mobile number"
+                                    className="w-full p-4 bg-transparent outline-none font-bold text-neutral-900 placeholder:text-neutral-400 placeholder:font-medium tracking-wide"
+                                    required
+                                />
+                            </div>
                         </div>
 
                         <div>

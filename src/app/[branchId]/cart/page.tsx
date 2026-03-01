@@ -1,14 +1,17 @@
 "use client";
 
 import { useCart } from "../../../context/CartContext";
-import { ArrowLeft, Trash2, ShoppingBag } from "lucide-react";
+import { ArrowLeft, Trash2, ShoppingBag, Loader2 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { use } from "react";
+import { use, useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function CartPage({ params }: { params: Promise<{ branchId: string }> }) {
     const { branchId } = use(params);
     const { items, removeFromCart, updateQuantity, cartTotal, itemCount } = useCart();
+    const router = useRouter();
+    const [isCheckingOut, setIsCheckingOut] = useState(false);
 
     if (items.length === 0) {
         return (
@@ -118,12 +121,20 @@ export default function CartPage({ params }: { params: Promise<{ branchId: strin
                     </div>
                 </div>
 
-                <Link
-                    href={`/${branchId}/checkout`}
-                    className="w-full bg-indigo-500 hover:bg-indigo-400 text-white py-4 rounded-2xl font-bold text-lg flex justify-center transition-colors shadow-lg shadow-indigo-500/20"
+                <button
+                    onClick={() => {
+                        setIsCheckingOut(true);
+                        router.push(`/${branchId}/checkout`);
+                    }}
+                    disabled={isCheckingOut}
+                    className="w-full bg-indigo-500 hover:bg-indigo-400 disabled:bg-indigo-400 text-white py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-2 transition-colors shadow-lg shadow-indigo-500/20"
                 >
-                    Proceed to Checkout
-                </Link>
+                    {isCheckingOut ? (
+                        <><Loader2 className="w-5 h-5 animate-spin" /> Preparing Checkout...</>
+                    ) : (
+                        "Proceed to Checkout"
+                    )}
+                </button>
             </div>
         </div>
     );
