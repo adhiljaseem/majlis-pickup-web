@@ -125,7 +125,7 @@ export default function ProductDetailsPage({
     const hasDiscount = product.offerPrice > 0 && product.offerPrice < product.price;
 
     return (
-        <div className="max-w-5xl mx-auto pb-32 sm:pb-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <div className="max-w-5xl mx-auto pb-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
             {/* Navigation Header */}
             <div className="flex items-center justify-between mb-6">
                 <button
@@ -191,8 +191,8 @@ export default function ProductDetailsPage({
                         </div>
                     )}
 
-                    {/* Desktop Cart Controls */}
-                    <div className="hidden sm:flex flex-col gap-4 mt-auto">
+                    {/* Cart Controls */}
+                    <div className="flex flex-col gap-4 mt-8 sm:mt-auto">
                         <div className="flex items-center gap-6 p-6 bg-neutral-50 rounded-[2rem] border border-neutral-100">
                             {cartItem ? (
                                 <div className="flex items-center gap-4 bg-white rounded-2xl p-2 shadow-sm border border-neutral-100 flex-1 justify-center">
@@ -248,39 +248,6 @@ export default function ProductDetailsPage({
                     </div>
                 </div>
             )}
-
-            {/* Mobile Sticky Add to Cart */}
-            <div className="sm:hidden fixed bottom-24 left-4 right-4 z-40 animate-in slide-in-from-bottom-8 duration-500">
-                <div className="bg-white/80 backdrop-blur-xl border border-white/40 rounded-[2rem] p-3 shadow-2xl ring-1 ring-black/5">
-                    {cartItem ? (
-                        <div className="flex items-center gap-2 p-1">
-                            <div className="flex items-center gap-3 bg-neutral-100 rounded-2xl p-1.5 flex-1 ring-1 ring-inset ring-black/5">
-                                <button
-                                    onClick={() => { hapticSoft(); updateQuantity(product.id, cartItem.quantity - 1); }}
-                                    className="w-12 h-12 rounded-xl bg-white shadow-sm flex items-center justify-center text-neutral-800 active:scale-95"
-                                >
-                                    <Minus className="w-5 h-5" />
-                                </button>
-                                <span className="flex-1 text-center font-black text-lg">{cartItem.quantity}</span>
-                                <button
-                                    onClick={() => { hapticSoft(); updateQuantity(product.id, cartItem.quantity + 1); }}
-                                    className="w-12 h-12 rounded-xl bg-white shadow-sm flex items-center justify-center text-neutral-800 active:scale-95"
-                                >
-                                    <Plus className="w-5 h-5" />
-                                </button>
-                            </div>
-                        </div>
-                    ) : (
-                        <button
-                            onClick={() => { hapticSoft(); addToCart(product); }}
-                            className="w-full bg-neutral-900 text-white rounded-[1.5rem] py-5 font-black flex items-center justify-center gap-3 shadow-xl active:scale-95"
-                        >
-                            <ShoppingBag className="w-6 h-6" />
-                            Add to Cart
-                        </button>
-                    )}
-                </div>
-            </div>
         </div>
     );
 }
