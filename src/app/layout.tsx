@@ -4,6 +4,7 @@ import "./globals.css";
 import SecurityDeterrent from "../components/SecurityDeterrent";
 import { CartProvider } from "../context/CartContext";
 import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -33,6 +34,7 @@ export default function RootLayout({
           {children}
         </CartProvider>
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
