@@ -4,15 +4,11 @@ const nextConfig = {
         remotePatterns: [
             {
                 protocol: 'https',
-                hostname: 'majlis-experience.appspot.com',
-                port: '',
-                pathname: '/**',
+                hostname: '**',
             },
             {
-                protocol: 'https',
-                hostname: 'firebasestorage.googleapis.com',
-                port: '',
-                pathname: '/**',
+                protocol: 'http',
+                hostname: '**',
             }
         ],
     },

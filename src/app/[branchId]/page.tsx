@@ -10,6 +10,7 @@ import { useState as useImageState } from "react";
 import { ProductSkeleton } from "../../components/Skeleton";
 import { hapticSoft } from "../../lib/haptics";
 import NextLink from "next/link";
+import { MobileCartSummary } from "../../components/MobileCartSummary";
 import Image from "next/image";
 
 function ProductImage({ src, alt }: { src: string; alt: string }) {
@@ -37,8 +38,8 @@ function ProductCard({ product, branchId }: { product: Product, branchId: string
     const outOfStock = product.stock <= 0;
 
     return (
-        <div
-            onClick={() => router.push(`/${branchId}/product/${product.id}`)}
+        <NextLink
+            href={`/${branchId}/product/${product.id}`}
             className={`bg-white rounded-2xl p-4 shadow-sm border transition-all group flex flex-col h-full cursor-pointer
             ${isSelected ? 'border-indigo-500 ring-1 ring-indigo-500/10 bg-indigo-50/5' : 'border-neutral-100 hover:border-indigo-100'} 
             ${outOfStock ? 'opacity-60' : 'hover:shadow-md'}`}>
@@ -101,7 +102,7 @@ function ProductCard({ product, branchId }: { product: Product, branchId: string
                     </div>
                 </div>
             </div>
-        </div>
+        </NextLink>
     );
 }
 
@@ -186,6 +187,8 @@ export default function BranchHomePage({
                     </div>
                 )}
             </div>
+
+            <MobileCartSummary />
         </div>
     );
 }

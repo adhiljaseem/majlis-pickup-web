@@ -57,7 +57,16 @@ export default function CartPage({ params }: { params: Promise<{ branchId: strin
                                         <h3 className="font-bold text-neutral-900 text-sm sm:text-base">{item.name}</h3>
                                         <p className="text-neutral-500 text-xs sm:text-sm mt-1">{item.category}</p>
                                     </div>
-                                    <p className="font-bold text-indigo-600">QAR {(item.price * item.quantity).toFixed(2)}</p>
+                                    <div>
+                                        {item.offerPrice > 0 && item.offerPrice < item.price ? (
+                                            <div className="flex flex-col items-end">
+                                                <p className="font-bold text-indigo-600">QAR {(item.offerPrice * item.quantity).toFixed(2)}</p>
+                                                <p className="text-[10px] text-neutral-400 line-through">QAR {(item.price * item.quantity).toFixed(2)}</p>
+                                            </div>
+                                        ) : (
+                                            <p className="font-bold text-indigo-600">QAR {(item.price * item.quantity).toFixed(2)}</p>
+                                        )}
+                                    </div>
                                 </div>
 
                                 <div className="flex items-center justify-between mt-auto pt-4">

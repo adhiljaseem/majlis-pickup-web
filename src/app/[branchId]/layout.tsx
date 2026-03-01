@@ -6,7 +6,6 @@ import Image from "next/image";
 import { ReactNode, use } from "react";
 import { useCart } from "../../context/CartContext";
 import { usePathname } from "next/navigation";
-import { MobileCartSummary } from "../../components/MobileCartSummary";
 import { SearchAutocomplete } from "../../components/SearchAutocomplete";
 
 export default function BranchLayout({
@@ -87,12 +86,9 @@ export default function BranchLayout({
                 )}
             </header>
 
-            {/* Main Content Area */}
             <main className="max-w-7xl mx-auto px-4 py-6 sm:py-8 pb-32 sm:pb-8">
                 {children}
             </main>
-
-            <MobileCartSummary />
         </div>
     );
 }
