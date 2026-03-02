@@ -45,7 +45,7 @@ export function SearchAutocomplete({
                 .documents()
                 .search({
                     q,
-                    query_by: "name,brand,category,subcategory,subsubcategory,barcodes,tags,searchKeywords",
+                    query_by: "name,brand,category,subcategory,subsubcategory,barcode",
                     per_page: 6,
                     highlight_full_fields: "name",
                 });

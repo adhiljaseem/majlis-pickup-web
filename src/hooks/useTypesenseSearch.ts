@@ -55,7 +55,7 @@ export function useTypesenseSearch(branchId: string) {
 
             const searchParameters = {
                 q: query || "*",
-                query_by: "name,brand,category,subcategory,subsubcategory,barcodes,tags,searchKeywords,description",
+                query_by: "name,brand,category,subcategory,subsubcategory,barcode,description",
                 per_page: perPage,
                 page: currentPage,
             };
@@ -87,9 +87,10 @@ export function useTypesenseSearch(branchId: string) {
             const foundCount = response.found || 0;
             setHasMore(foundCount > (currentPage * perPage));
 
-        } catch (err: unknown) {
+        } catch (err: any) {
             console.error("Typesense search failed:", err);
-            setError("Unable to fetch products. Please check your connection.");
+            const msg = err?.message || "Unable to fetch products. Please check your connection.";
+            setError(msg);
         } finally {
             setLoading(false);
         }
