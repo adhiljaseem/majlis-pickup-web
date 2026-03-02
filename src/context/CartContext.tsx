@@ -14,6 +14,7 @@ interface CartContextType {
     searchQuery: string;
     setSearchQuery: (query: string) => void;
     lastAddedTimestamp: number;
+    mergeItems: (newItems: CartItem[]) => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -75,6 +76,22 @@ export function CartProvider({ children }: { children: ReactNode }) {
         );
     };
 
+    const mergeItems = (newItems: CartItem[]) => {
+        setItems(current => {
+            const merged = [...current];
+            newItems.forEach(newItem => {
+                const existing = merged.find(i => i.id === newItem.id);
+                if (existing) {
+                    existing.quantity += newItem.quantity;
+                } else {
+                    merged.push(newItem);
+                }
+            });
+            return merged;
+        });
+        setLastAddedTimestamp(Date.now());
+    };
+
     const clearCart = () => setItems([]);
 
     const cartTotal = items.reduce((total, item) => {
@@ -85,7 +102,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     return (
         <CartContext.Provider value={{
-            items, addToCart, removeFromCart, updateQuantity, clearCart, cartTotal, itemCount, searchQuery, setSearchQuery, lastAddedTimestamp
+            items, addToCart, removeFromCart, updateQuantity, clearCart, cartTotal, itemCount, searchQuery, setSearchQuery, lastAddedTimestamp, mergeItems
         }}>
             {children}
         </CartContext.Provider>

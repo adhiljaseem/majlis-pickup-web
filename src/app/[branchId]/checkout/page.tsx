@@ -2,7 +2,7 @@
 
 import { useState, use, useEffect } from "react";
 import { useCart } from "../../../context/CartContext";
-import { ArrowLeft, CheckCircle2, Loader2, Car } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Loader2, Car, Clock } from "lucide-react";
 import Link from "next/link";
 import { db, ensureAuth, auth } from "../../../lib/firebase";
 import { doc, runTransaction, serverTimestamp } from "firebase/firestore";
@@ -16,6 +16,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ branchId: s
     const [name, setName] = useState("");
     const [phone, setPhone] = useState("");
     const [carNumber, setCarNumber] = useState("");
+    const [scheduledTime, setScheduledTime] = useState("ASAP");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -28,6 +29,35 @@ export default function CheckoutPage({ params }: { params: Promise<{ branchId: s
         if (savedPhone) setPhone(savedPhone);
         if (savedCar) setCarNumber(savedCar);
     }, []);
+
+    // Helper to generate time slots
+    const getTimeSlots = () => {
+        const slots = ["ASAP"];
+        const now = new Date();
+        const currentHour = now.getHours();
+        const currentMin = now.getMinutes();
+
+        // Start from next 30 min slot
+        let startHour = currentHour;
+        let startMin = currentMin > 30 ? 60 : 30;
+
+        if (startMin === 60) {
+            startHour++;
+            startMin = 0;
+        }
+
+        // Generate slots until 10 PM
+        for (let h = startHour; h <= 22; h++) {
+            for (let m = (h === startHour ? startMin : 0); m < 60; m += 30) {
+                if (h === 22 && m > 0) break;
+                const time = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+                slots.push(time);
+            }
+        }
+        return slots;
+    };
+
+    const timeSlots = getTimeSlots();
 
     const handleCheckout = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -96,7 +126,8 @@ export default function CheckoutPage({ params }: { params: Promise<{ branchId: s
                     userId: userId,
                     userMobile: phone,
                     // Additional field for web pickup specifically
-                    carNumber: carNumber
+                    carNumber: carNumber,
+                    scheduledTime: scheduledTime
                 };
 
                 // 4. Update the counter
@@ -218,6 +249,26 @@ export default function CheckoutPage({ params }: { params: Promise<{ branchId: s
                                     className="w-full p-4 bg-transparent outline-none font-bold text-neutral-900 placeholder:text-neutral-400 placeholder:font-medium tracking-wide"
                                     required
                                 />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-semibold text-neutral-700 mb-2">Pickup Time</label>
+                            <div className="relative">
+                                <select
+                                    value={scheduledTime}
+                                    onChange={(e) => setScheduledTime(e.target.value)}
+                                    className="w-full p-4 bg-neutral-50 border border-neutral-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all outline-none font-bold text-neutral-900 appearance-none"
+                                >
+                                    {timeSlots.map(slot => (
+                                        <option key={slot} value={slot}>
+                                            {slot === "ASAP" ? "🚀 ASAP (Now)" : `⏰ ${slot}`}
+                                        </option>
+                                    ))}
+                                </select>
+                                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-neutral-400">
+                                    <Clock className="w-5 h-5" />
+                                </div>
                             </div>
                         </div>
 

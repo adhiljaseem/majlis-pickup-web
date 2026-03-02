@@ -4,6 +4,8 @@ import { ShoppingBag, Store, PackageSearch } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { ReactNode, use, useState, useEffect } from "react";
+import { hapticSoft } from "../../lib/haptics";
+import { PWAInstallPrompt } from "../../components/PWAInstallPrompt";
 import { useCart } from "../../context/CartContext";
 import { usePathname } from "next/navigation";
 import { SearchAutocomplete } from "../../components/SearchAutocomplete";
@@ -124,6 +126,7 @@ export default function BranchLayout({
                         />
                     </div>
                 )}
+                <PWAInstallPrompt />
             </header>
 
             <main className="max-w-7xl mx-auto px-4 py-6 sm:py-8 pb-32 sm:pb-8">

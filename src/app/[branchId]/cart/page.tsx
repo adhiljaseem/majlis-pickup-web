@@ -1,11 +1,12 @@
 "use client";
 
 import { useCart } from "../../../context/CartContext";
-import { ArrowLeft, Trash2, ShoppingBag, Loader2 } from "lucide-react";
+import { ArrowLeft, Trash2, ShoppingBag, Loader2, Share2, Check } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { use, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { hapticSoft } from "../../../lib/haptics";
 import { typesenseClient } from "../../../lib/typesense";
 import { resolveForBranch } from "../../../hooks/useTypesenseSearch";
 import { Product, TypesenseProduct } from "../../../types";
@@ -13,9 +14,11 @@ import { ProductCard } from "../../../components/ProductCard";
 
 export default function CartPage({ params }: { params: Promise<{ branchId: string }> }) {
     const { branchId } = use(params);
-    const { items, removeFromCart, updateQuantity, cartTotal, itemCount } = useCart();
+    const { items, removeFromCart, updateQuantity, cartTotal, itemCount, mergeItems } = useCart();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [isCheckingOut, setIsCheckingOut] = useState(false);
+    const [isSharing, setIsSharing] = useState(false);
     const [suggestions, setSuggestions] = useState<Product[]>([]);
 
     useEffect(() => {
@@ -46,6 +49,75 @@ export default function CartPage({ params }: { params: Promise<{ branchId: strin
         fetchSuggestions();
     }, [branchId, items]);
 
+    // Handle shared cart data on mount
+    useEffect(() => {
+        const sharedData = searchParams.get("cartData");
+        if (sharedData) {
+            try {
+                const encoded = sharedData;
+                const decodedJson = atob(encoded);
+                const miniCart = JSON.parse(decodedJson);
+
+                // Clear the param from URL
+                const newParams = new URLSearchParams(searchParams.toString());
+                newParams.delete("cartData");
+                const cleanPath = window.location.pathname + (newParams.toString() ? `?${newParams.toString()}` : "");
+                window.history.replaceState({}, "", cleanPath);
+
+                // Fetch details for each shared item
+                const importShared = async () => {
+                    const importedItems: any[] = [];
+                    for (const mini of miniCart) {
+                        try {
+                            const res = await typesenseClient
+                                .collections("products")
+                                .documents()
+                                .search({
+                                    q: "*",
+                                    query_by: "name",
+                                    filter_by: `id:=[${mini.id}]`,
+                                    per_page: 1,
+                                });
+
+                            const d = res.hits?.[0]?.document as unknown as TypesenseProduct | undefined;
+                            if (d) {
+                                const resolved = resolveForBranch(d, branchId);
+                                if (resolved) {
+                                    importedItems.push({ ...resolved, quantity: mini.q });
+                                }
+                            }
+                        } catch (e) { console.error(e); }
+                    }
+                    if (importedItems.length > 0) {
+                        mergeItems(importedItems);
+                        hapticSoft();
+                    }
+                };
+                importShared();
+            } catch (e) { console.error(e); }
+        }
+    }, [searchParams, branchId, mergeItems]);
+
+    const handleShareCart = () => {
+        hapticSoft();
+        const miniCart = items.map(item => ({ id: item.id, q: item.quantity }));
+        const encoded = btoa(JSON.stringify(miniCart));
+        const shareUrl = `${window.location.origin}${window.location.pathname}?cartData=${encoded}`;
+
+        if (navigator.share) {
+            navigator.share({
+                title: "My Majlis Shopping Cart",
+                text: "Here's my shopping list for our Majlis pickup order. Check it out!",
+                url: shareUrl
+            }).catch(console.error);
+        } else {
+            navigator.clipboard.writeText(shareUrl).then(() => {
+                setIsSharing(true);
+                setTimeout(() => setIsSharing(false), 2000);
+            });
+        }
+    };
+
     if (items.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center py-24 px-4 text-center animate-in fade-in duration-500">
@@ -73,7 +145,21 @@ export default function CartPage({ params }: { params: Promise<{ branchId: strin
                 >
                     <ArrowLeft className="w-5 h-5" />
                 </Link>
-                <h1 className="text-2xl font-bold">Review Order</h1>
+                <div className="flex-1">
+                    <h1 className="text-2xl font-bold">Review Order</h1>
+                </div>
+                {items.length > 0 && (
+                    <button
+                        onClick={handleShareCart}
+                        className="flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-50 text-indigo-600 font-bold text-sm hover:bg-indigo-100 transition-colors"
+                    >
+                        {isSharing ? (
+                            <><Check className="w-4 h-4" /> Copied!</>
+                        ) : (
+                            <><Share2 className="w-4 h-4" /> Share Cart</>
+                        )}
+                    </button>
+                )}
             </div>
 
             <div className="bg-white rounded-3xl p-2 sm:p-6 shadow-sm border border-neutral-100">
