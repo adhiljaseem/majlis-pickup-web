@@ -23,10 +23,20 @@ export default function BranchHomePage({
     const { branchId } = use(params);
     const { searchQuery } = useCart();
     const { results, loading, error, searchProducts, hasMore } = useTypesenseSearch(branchId);
+    const [recentProducts, setRecentProducts] = useState<Product[]>([]);
 
     // Initial load
     useEffect(() => {
         searchProducts();
+        // Load recent products for "Buy It Again"
+        const saved = localStorage.getItem("pickup_recent_products");
+        if (saved) {
+            try {
+                setRecentProducts(JSON.parse(saved));
+            } catch (e) {
+                console.error("Failed to parse recent products", e);
+            }
+        }
     }, [branchId]);
 
     // Handle typing search from global context
@@ -71,6 +81,27 @@ export default function BranchHomePage({
                 <h3 className="text-lg font-bold mb-4 text-neutral-800">
                     {searchQuery ? `Search Results for "${searchQuery}"` : "Available Products"}
                 </h3>
+
+                {/* Buy It Again Section */}
+                {!searchQuery && recentProducts.length > 0 && (
+                    <div className="mb-10 animate-in fade-in slide-in-from-left-4 duration-700">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-bold text-neutral-800 flex items-center gap-2">
+                                <span className="text-indigo-600">🔄</span> Buy It Again
+                            </h3>
+                        </div>
+                        <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0">
+                            {recentProducts.map((product) => (
+                                <div key={product.id} className="min-w-[160px] sm:min-w-[200px] flex-shrink-0">
+                                    <ProductCard
+                                        product={product}
+                                        branchId={branchId}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {loading && results.length === 0 ? (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6">

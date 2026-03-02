@@ -3,10 +3,12 @@
 import { ShoppingBag, Store, PackageSearch } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { ReactNode, use } from "react";
+import { ReactNode, use, useState, useEffect } from "react";
 import { useCart } from "../../context/CartContext";
 import { usePathname } from "next/navigation";
 import { SearchAutocomplete } from "../../components/SearchAutocomplete";
+import { MobileCartSummary } from "../../components/MobileCartSummary";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function BranchLayout({
     children,
@@ -16,10 +18,19 @@ export default function BranchLayout({
     params: Promise<{ branchId: string }>;
 }) {
     const { branchId } = use(params);
-    const { itemCount, searchQuery, setSearchQuery } = useCart();
+    const { itemCount, searchQuery, setSearchQuery, lastAddedTimestamp } = useCart();
     const pathname = usePathname();
+    const [lastOrder, setLastOrder] = useState<{ id: string, phone: string } | null>(null);
 
     const isHome = pathname === `/${branchId}`;
+
+    useEffect(() => {
+        const id = localStorage.getItem("pickup_last_order_id");
+        const phone = localStorage.getItem("pickup_phone");
+        if (id && phone) {
+            setLastOrder({ id, phone });
+        }
+    }, [pathname]); // Refresh when navigating
 
     return (
         <div className="min-h-screen bg-neutral-50 text-neutral-900 font-sans selection:bg-indigo-500/30">
@@ -64,21 +75,41 @@ export default function BranchLayout({
 
                     {/* Track Order Icon */}
                     <Link
-                        href={`/${branchId}/track`}
+                        href={lastOrder
+                            ? `/${branchId}/track?orderId=${lastOrder.id}&phone=${encodeURIComponent(lastOrder.phone)}`
+                            : `/${branchId}/track`
+                        }
                         className="p-2 text-neutral-600 hover:text-indigo-600 transition-colors hover:scale-105"
                         title="Track Order"
                     >
                         <PackageSearch className="w-6 h-6 sm:w-7 sm:h-7" />
                     </Link>
 
-                    {/* Cart Icon */}
-                    <Link href={`/${branchId}/cart`} className="relative shrink-0 p-2 transition-transform hover:scale-105">
-                        <ShoppingBag className="w-6 h-6 sm:w-7 sm:h-7 text-neutral-700" />
-                        {itemCount > 0 && (
-                            <span className="absolute top-0 right-0 h-5 w-5 sm:h-5 sm:w-5 rounded-full bg-red-500 border-2 border-white text-[10px] font-bold text-white flex items-center justify-center shadow-sm">
-                                {itemCount > 99 ? '99+' : itemCount}
-                            </span>
-                        )}
+                    {/* Cart Icon with Animation */}
+                    <Link
+                        href={`/${branchId}/cart`}
+                        className="relative p-2 text-neutral-600 hover:text-indigo-600 transition-colors hover:scale-105"
+                    >
+                        <motion.div
+                            key={lastAddedTimestamp}
+                            initial={lastAddedTimestamp > 0 ? { scale: 1.5, rotate: 15 } : {}}
+                            animate={{ scale: 1, rotate: 0 }}
+                            transition={{ type: "spring", stiffness: 400, damping: 10 }}
+                        >
+                            <ShoppingBag className="w-6 h-6 sm:w-7 sm:h-7" />
+                        </motion.div>
+                        <AnimatePresence>
+                            {itemCount > 0 && (
+                                <motion.span
+                                    initial={{ scale: 0, opacity: 0 }}
+                                    animate={{ scale: 1, opacity: 1 }}
+                                    exit={{ scale: 0, opacity: 0 }}
+                                    className="absolute -top-1 -right-1 bg-indigo-600 text-white text-[10px] sm:text-[11px] font-black w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center shadow-lg border-2 border-white"
+                                >
+                                    {itemCount}
+                                </motion.span>
+                            )}
+                        </AnimatePresence>
                     </Link>
                 </div>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, use } from "react";
+import { useState, use, useEffect } from "react";
 import { useCart } from "../../../context/CartContext";
 import { ArrowLeft, CheckCircle2, Loader2, Car } from "lucide-react";
 import Link from "next/link";
@@ -18,6 +18,16 @@ export default function CheckoutPage({ params }: { params: Promise<{ branchId: s
     const [carNumber, setCarNumber] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // Load saved details on mount
+    useEffect(() => {
+        const savedName = localStorage.getItem("pickup_name");
+        const savedPhone = localStorage.getItem("pickup_phone");
+        const savedCar = localStorage.getItem("pickup_car");
+        if (savedName) setName(savedName);
+        if (savedPhone) setPhone(savedPhone);
+        if (savedCar) setCarNumber(savedCar);
+    }, []);
 
     const handleCheckout = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -99,6 +109,27 @@ export default function CheckoutPage({ params }: { params: Promise<{ branchId: s
                 // 5. Save the order to the actual 'orders' collection with the explicit orderId
                 const newOrderRef = doc(db, "orders", nextOrderId.toString());
                 transaction.set(newOrderRef, orderData);
+
+                // 6. Save details to localStorage for future use
+                localStorage.setItem("pickup_name", name);
+                localStorage.setItem("pickup_phone", phone);
+                localStorage.setItem("pickup_car", carNumber);
+                localStorage.setItem("pickup_last_order_id", nextOrderId.toString());
+
+                // 7. Track purchased items for "Buy It Again"
+                const existingRecent = JSON.parse(localStorage.getItem("pickup_recent_products") || "[]");
+                const newItems = items.map(item => ({
+                    id: item.id,
+                    name: item.name,
+                    price: item.price,
+                    offerPrice: item.offerPrice,
+                    imageUrl: item.imageUrl,
+                    category: item.category
+                }));
+
+                // Merge and remove duplicates, keep last 15
+                const merged = [...newItems, ...existingRecent.filter((ex: any) => !newItems.find(n => n.id === ex.id))].slice(0, 15);
+                localStorage.setItem("pickup_recent_products", JSON.stringify(merged));
 
                 return nextOrderId;
             });

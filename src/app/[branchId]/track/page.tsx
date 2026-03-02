@@ -39,6 +39,16 @@ function TrackContent({ branchId }: { branchId: string }) {
     const [error, setError] = useState<string | null>(null);
     const [order, setOrder] = useState<OrderData | null>(null);
 
+    // Pre-fill from localStorage if URL is empty
+    useEffect(() => {
+        if (!urlOrderId && !urlPhone) {
+            const lastId = localStorage.getItem("pickup_last_order_id");
+            const lastPhone = localStorage.getItem("pickup_phone");
+            if (lastId) setOrderId(lastId);
+            if (lastPhone) setPhone(lastPhone);
+        }
+    }, [urlOrderId, urlPhone]);
+
     useEffect(() => {
         if (!isTracking || !orderId || !phone) return;
 

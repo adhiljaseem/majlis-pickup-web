@@ -4,14 +4,47 @@ import { useCart } from "../../../context/CartContext";
 import { ArrowLeft, Trash2, ShoppingBag, Loader2 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { use, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { typesenseClient } from "../../../lib/typesense";
+import { resolveForBranch } from "../../../hooks/useTypesenseSearch";
+import { Product, TypesenseProduct } from "../../../types";
+import { ProductCard } from "../../../components/ProductCard";
 
 export default function CartPage({ params }: { params: Promise<{ branchId: string }> }) {
     const { branchId } = use(params);
     const { items, removeFromCart, updateQuantity, cartTotal, itemCount } = useCart();
     const router = useRouter();
     const [isCheckingOut, setIsCheckingOut] = useState(false);
+    const [suggestions, setSuggestions] = useState<Product[]>([]);
+
+    useEffect(() => {
+        async function fetchSuggestions() {
+            try {
+                // Fetch some low-price small snacks/items
+                const res = await typesenseClient
+                    .collections("products")
+                    .documents()
+                    .search({
+                        q: "*",
+                        query_by: "name",
+                        filter_by: "branchPrices.*.price:<20",
+                        per_page: 8,
+                    });
+
+                const docs = res.hits?.map(h => h.document as unknown as TypesenseProduct) || [];
+                const resolved = docs
+                    .map(d => resolveForBranch(d, branchId))
+                    .filter((p): p is Product => p !== null && !items.find(i => i.id === p.id))
+                    .slice(0, 4);
+
+                setSuggestions(resolved);
+            } catch (err) {
+                console.error("Failed to fetch upsell suggestions:", err);
+            }
+        }
+        fetchSuggestions();
+    }, [branchId, items]);
 
     if (items.length === 0) {
         return (
@@ -101,6 +134,20 @@ export default function CartPage({ params }: { params: Promise<{ branchId: strin
                     ))}
                 </div>
             </div>
+
+            {/* Upselling Section */}
+            {suggestions.length > 0 && (
+                <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+                    <h2 className="text-lg font-bold text-neutral-900 mb-4 flex items-center gap-2">
+                        <span className="text-indigo-600">🛍️</span> Complete Your Order
+                    </h2>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        {suggestions.map(product => (
+                            <ProductCard key={product.id} product={product} branchId={branchId} />
+                        ))}
+                    </div>
+                </div>
+            )}
 
             <div className="bg-neutral-900 text-white rounded-3xl p-6 sm:p-8 shadow-xl">
                 <div className="space-y-3 text-sm mb-6 pb-6 border-b border-neutral-800">

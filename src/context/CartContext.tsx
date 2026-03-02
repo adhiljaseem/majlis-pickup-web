@@ -13,6 +13,7 @@ interface CartContextType {
     itemCount: number;
     searchQuery: string;
     setSearchQuery: (query: string) => void;
+    lastAddedTimestamp: number;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -20,6 +21,7 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export function CartProvider({ children }: { children: ReactNode }) {
     const [items, setItems] = useState<CartItem[]>([]);
     const [searchQuery, setSearchQuery] = useState("");
+    const [lastAddedTimestamp, setLastAddedTimestamp] = useState(0);
 
     const [isLoaded, setIsLoaded] = useState(false);
 
@@ -54,6 +56,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
             }
             return [...current, { ...product, quantity: 1 }];
         });
+        setLastAddedTimestamp(Date.now());
     };
 
     const removeFromCart = (productId: string) => {
@@ -82,7 +85,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     return (
         <CartContext.Provider value={{
-            items, addToCart, removeFromCart, updateQuantity, clearCart, cartTotal, itemCount, searchQuery, setSearchQuery
+            items, addToCart, removeFromCart, updateQuantity, clearCart, cartTotal, itemCount, searchQuery, setSearchQuery, lastAddedTimestamp
         }}>
             {children}
         </CartContext.Provider>
