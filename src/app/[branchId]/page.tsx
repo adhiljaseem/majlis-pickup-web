@@ -90,9 +90,9 @@ export default function BranchHomePage({
                                 <span className="text-indigo-600">🔄</span> Buy It Again
                             </h3>
                         </div>
-                        <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0">
+                        <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory -mx-4 px-4 sm:mx-0 sm:px-0" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}>
                             {recentProducts.map((product) => (
-                                <div key={product.id} className="min-w-[160px] sm:min-w-[200px] flex-shrink-0">
+                                <div key={product.id} className="w-[44vw] sm:w-[220px] flex-shrink-0 snap-start">
                                     <ProductCard
                                         product={product}
                                         branchId={branchId}

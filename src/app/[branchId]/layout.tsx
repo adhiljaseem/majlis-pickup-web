@@ -100,13 +100,15 @@ export default function BranchLayout({
                         >
                             <ShoppingBag className="w-6 h-6 sm:w-7 sm:h-7" />
                         </motion.div>
-                        <AnimatePresence>
+                        <AnimatePresence mode="popLayout">
                             {itemCount > 0 && (
                                 <motion.span
-                                    initial={{ scale: 0, opacity: 0 }}
-                                    animate={{ scale: 1, opacity: 1 }}
-                                    exit={{ scale: 0, opacity: 0 }}
-                                    className="absolute -top-1 -right-1 bg-indigo-600 text-white text-[10px] sm:text-[11px] font-black w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center shadow-lg border-2 border-white"
+                                    key={itemCount}
+                                    initial={{ y: -12, opacity: 0, scale: 0.5 }}
+                                    animate={{ y: 0, opacity: 1, scale: 1 }}
+                                    exit={{ y: 12, opacity: 0, scale: 0.5 }}
+                                    transition={{ type: "spring", stiffness: 500, damping: 25 }}
+                                    className="absolute -top-1 -right-1 bg-indigo-600 text-white text-[10px] sm:text-[11px] font-black w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center shadow-lg border-2 border-white overflow-hidden"
                                 >
                                     {itemCount}
                                 </motion.span>

@@ -1,10 +1,10 @@
 "use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
-import { useState, useEffect, use, Suspense } from "react";
+import { useState, useEffect, useRef, use, Suspense } from "react";
 import { db } from "../../../lib/firebase";
-import { doc, onSnapshot } from "firebase/firestore";
-import { Loader2, ArrowLeft, Package, CheckCircle, CheckCircle2, Car, XCircle } from "lucide-react";
+import { doc, onSnapshot, collection, query, where, getDocs, updateDoc } from "firebase/firestore";
+import { Loader2, ArrowLeft, Package, CheckCircle, CheckCircle2, Car, XCircle, Bell, BellRing, MapPin, Users } from "lucide-react";
 import Link from "next/link";
 
 interface OrderData {
@@ -24,6 +24,14 @@ const STEPS = [
     { id: "picked_up", label: "Picked Up", icon: CheckCircle }
 ];
 
+const STATUS_LABELS: Record<string, string> = {
+    pending: "Order Received",
+    confirmed: "Order Confirmed",
+    preparing_order: "Being Prepared",
+    ready: "Ready for Pickup! 🚗",
+    picked_up: "Picked Up ✅",
+};
+
 function TrackContent({ branchId }: { branchId: string }) {
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -38,6 +46,35 @@ function TrackContent({ branchId }: { branchId: string }) {
     const [loading, setLoading] = useState(!!urlOrderId && !!urlPhone);
     const [error, setError] = useState<string | null>(null);
     const [order, setOrder] = useState<OrderData | null>(null);
+    const [notifPermission, setNotifPermission] = useState<NotificationPermission>("default");
+    const prevStatusRef = useRef<string | null>(null);
+    const [arrivalSent, setArrivalSent] = useState(false);
+    const [queuePosition, setQueuePosition] = useState<number | null>(null);
+    const [sendingArrival, setSendingArrival] = useState(false);
+
+    // Check notification permission on mount
+    useEffect(() => {
+        if (typeof Notification !== "undefined") {
+            setNotifPermission(Notification.permission);
+        }
+    }, []);
+
+    const requestNotifications = async () => {
+        if (typeof Notification === "undefined") return;
+        const perm = await Notification.requestPermission();
+        setNotifPermission(perm);
+    };
+
+    const sendNotification = (status: string) => {
+        if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+        const label = STATUS_LABELS[status] || status;
+        new Notification("Majlis Pickup Update", {
+            body: `Your order #${orderId} is now: ${label}`,
+            icon: "/logo.png",
+            badge: "/logo.png",
+            tag: `order-${orderId}`,
+        });
+    };
 
     // Pre-fill from localStorage if URL is empty
     useEffect(() => {
@@ -75,8 +112,24 @@ function TrackContent({ branchId }: { branchId: string }) {
                 return;
             }
 
+            // Send push notification on status change
+            if (prevStatusRef.current && prevStatusRef.current !== data.status) {
+                sendNotification(data.status);
+            }
+            prevStatusRef.current = data.status;
+
             setOrder(data);
             setLoading(false);
+
+            // Fetch queue position when order is active
+            if (["pending", "confirmed", "preparing_order"].includes(data.status)) {
+                fetchQueuePosition();
+            }
+
+            // Check if arrival was already sent
+            if ((data as any).customerArrived) {
+                setArrivalSent(true);
+            }
         }, (err) => {
             console.error("Error fetching order:", err);
             setError("Unable to track order right now.");
@@ -85,6 +138,44 @@ function TrackContent({ branchId }: { branchId: string }) {
 
         return () => unsubscribe();
     }, [isTracking, orderId, phone]);
+
+    const fetchQueuePosition = async () => {
+        try {
+            const q = query(
+                collection(db, "orders"),
+                where("branchId", "==", branchId),
+                where("status", "in", ["pending", "confirmed", "preparing_order"])
+            );
+            const snap = await getDocs(q);
+
+            // Count orders before this one (lower order IDs = earlier)
+            const allOrders = snap.docs.map(d => ({
+                id: d.id,
+                orderId: d.data().orderId,
+            }));
+            const myOrder = parseInt(orderId);
+            const ahead = allOrders.filter(o => o.orderId < myOrder).length;
+            setQueuePosition(ahead);
+        } catch (err) {
+            console.error("Queue position error:", err);
+        }
+    };
+
+    const handleImHere = async () => {
+        setSendingArrival(true);
+        try {
+            const orderRef = doc(db, "orders", orderId);
+            await updateDoc(orderRef, {
+                customerArrived: true,
+                arrivedAt: new Date().toISOString(),
+            });
+            setArrivalSent(true);
+        } catch (err) {
+            console.error("Failed to send arrival:", err);
+        } finally {
+            setSendingArrival(false);
+        }
+    };
 
     const handleStartTracking = (e: React.FormEvent) => {
         e.preventDefault();
@@ -266,12 +357,73 @@ function TrackContent({ branchId }: { branchId: string }) {
                 )}
             </div>
 
+            {/* Queue Position + I'm Here */}
+            {order && ["pending", "confirmed", "preparing_order"].includes(order.status) && (
+                <div className="space-y-3">
+                    {/* Queue Position */}
+                    {queuePosition !== null && (
+                        <div className="bg-white rounded-2xl p-4 border border-neutral-100 shadow-sm flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center flex-shrink-0">
+                                <Users className="w-6 h-6 text-indigo-600" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-bold text-neutral-800">
+                                    {queuePosition === 0
+                                        ? "🎉 You're next in line!"
+                                        : `${queuePosition} order${queuePosition > 1 ? 's' : ''} ahead of you`
+                                    }
+                                </p>
+                                <p className="text-xs text-neutral-500">Your position updates in real-time</p>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* I'm Here Button */}
+                    {!arrivalSent ? (
+                        <button
+                            onClick={handleImHere}
+                            disabled={sendingArrival}
+                            className="w-full flex items-center justify-center gap-3 py-4 px-6 rounded-2xl bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold text-lg shadow-xl shadow-green-500/30 hover:shadow-green-500/50 hover:-translate-y-0.5 transition-all disabled:opacity-60"
+                        >
+                            {sendingArrival ? (
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                            ) : (
+                                <MapPin className="w-5 h-5" />
+                            )}
+                            I&apos;m Here — Ready to Pick Up
+                        </button>
+                    ) : (
+                        <div className="w-full flex items-center justify-center gap-2 py-4 px-6 rounded-2xl bg-green-50 border-2 border-green-200 text-green-700 font-bold">
+                            <CheckCircle className="w-5 h-5" />
+                            Staff has been notified of your arrival!
+                        </div>
+                    )}
+                </div>
+            )}
+
             {!isCancelled && (
-                <div className="text-center">
-                    <p className="text-xs font-bold uppercase tracking-wider text-neutral-400 mb-2 flex justify-center items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                        Live Updates Active
-                    </p>
+                <div className="space-y-3">
+                    <div className="text-center">
+                        <p className="text-xs font-bold uppercase tracking-wider text-neutral-400 mb-2 flex justify-center items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                            Live Updates Active
+                        </p>
+                    </div>
+                    {notifPermission !== "granted" && typeof Notification !== "undefined" && (
+                        <button
+                            onClick={requestNotifications}
+                            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-700 font-semibold text-sm hover:bg-amber-100 transition-colors"
+                        >
+                            <Bell className="w-4 h-4" />
+                            Enable Notifications
+                        </button>
+                    )}
+                    {notifPermission === "granted" && (
+                        <div className="flex items-center justify-center gap-2 text-xs text-green-600 font-semibold">
+                            <BellRing className="w-3.5 h-3.5" />
+                            You&apos;ll be notified when status changes
+                        </div>
+                    )}
                 </div>
             )}
         </div>

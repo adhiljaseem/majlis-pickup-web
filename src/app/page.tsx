@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { db, ensureAuth } from "../lib/firebase";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, query, where } from "firebase/firestore";
 import Link from "next/link";
 import { MapPin, ArrowRight, Store, Truck, Clock, ShoppingBag, Navigation, Loader2 } from "lucide-react";
 import { getUserLocation, parseCoordinates, haversineDistance, Coordinates } from "../lib/geo";
@@ -17,6 +17,7 @@ interface Branch {
   openingTime?: string;
   closingTime?: string;
   distance?: number; // km from user
+  activeOrders?: number; // pending orders count
 }
 
 export default function HomePage() {
@@ -25,6 +26,7 @@ export default function HomePage() {
   const [locationState, setLocationState] = useState<"detecting" | "found" | "denied" | "idle">("idle");
   const [nearestBranch, setNearestBranch] = useState<Branch | null>(null);
   const [manualId, setManualId] = useState("");
+  const [busyData, setBusyData] = useState<Record<string, number>>({});
 
   useEffect(() => {
     async function init() {
@@ -66,6 +68,23 @@ export default function HomePage() {
           setBranches(list);
           setLocationState("denied");
         }
+
+        // Fetch busy data for all branches
+        try {
+          const q = query(
+            collection(db, "orders"),
+            where("status", "in", ["pending", "confirmed", "preparing_order"])
+          );
+          const orderSnap = await getDocs(q);
+          const counts: Record<string, number> = {};
+          orderSnap.docs.forEach(d => {
+            const bid = d.data().branchId;
+            counts[bid] = (counts[bid] || 0) + 1;
+          });
+          setBusyData(counts);
+        } catch (e) {
+          console.error("Failed to fetch busy data", e);
+        }
       } catch (err) {
         console.error("Could not load branches:", err);
         setLocationState("denied");
@@ -80,6 +99,13 @@ export default function HomePage() {
     if (!km || km === Infinity) return null;
     if (km < 1) return `${Math.round(km * 1000)}m away`;
     return `${km.toFixed(1)} km away`;
+  };
+
+  const getBusyLabel = (branchId: string) => {
+    const count = busyData[branchId] || 0;
+    if (count === 0) return { text: "Not busy", color: "bg-green-100 text-green-700 border-green-200", dot: "bg-green-500" };
+    if (count <= 3) return { text: "Moderate", color: "bg-amber-50 text-amber-700 border-amber-200", dot: "bg-amber-500" };
+    return { text: "Busy now", color: "bg-red-50 text-red-600 border-red-200", dot: "bg-red-500" };
   };
 
   return (
@@ -212,6 +238,16 @@ export default function HomePage() {
                             </span>
                           )}
                         </div>
+                        {/* Busy Status */}
+                        {(() => {
+                          const busy = getBusyLabel(nearestBranch.id);
+                          return (
+                            <div className={`mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${busy.color}`}>
+                              <span className={`w-2 h-2 rounded-full ${busy.dot} animate-pulse`} />
+                              {busy.text}
+                            </div>
+                          );
+                        })()}
                       </div>
                       <div className="flex-shrink-0 w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
                         <ArrowRight className="w-6 h-6 text-indigo-600" />
@@ -281,11 +317,21 @@ export default function HomePage() {
                           {branch.name}
                         </h3>
                         {branch.openingTime && branch.closingTime && (
-                          <p className="text-sm text-neutral-500 flex items-center gap-1.5 mb-3">
+                          <p className="text-sm text-neutral-500 flex items-center gap-1.5 mb-2">
                             <Clock className="w-3.5 h-3.5 flex-shrink-0" />
                             {branch.openingTime} &ndash; {branch.closingTime}
                           </p>
                         )}
+                        {/* Busy Badge */}
+                        {(() => {
+                          const busy = getBusyLabel(branch.id);
+                          return (
+                            <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold border mb-2 ${busy.color}`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${busy.dot}`} />
+                              {busy.text}
+                            </div>
+                          );
+                        })()}
                         <div className="flex items-center gap-1.5 text-sm font-semibold text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity">
                           Browse Products
                           <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />

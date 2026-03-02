@@ -1,12 +1,33 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Search, X } from "lucide-react";
+import { Search, X, Clock, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { typesenseClient } from "../lib/typesense";
 import { resolveForBranch } from "../hooks/useTypesenseSearch";
 import { TypesenseProduct, Product } from "../types";
+
+const RECENT_SEARCHES_KEY = "pickup_recent_searches";
+const MAX_RECENT = 8;
+
+function getRecentSearches(): string[] {
+    try {
+        return JSON.parse(localStorage.getItem(RECENT_SEARCHES_KEY) || "[]");
+    } catch { return []; }
+}
+
+function saveRecentSearch(query: string) {
+    const cleaned = query.trim();
+    if (cleaned.length < 2) return;
+    const existing = getRecentSearches().filter(s => s.toLowerCase() !== cleaned.toLowerCase());
+    const updated = [cleaned, ...existing].slice(0, MAX_RECENT);
+    localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated));
+}
+
+function clearRecentSearches() {
+    localStorage.removeItem(RECENT_SEARCHES_KEY);
+}
 
 interface SearchAutocompleteProps {
     branchId: string;
@@ -29,8 +50,15 @@ export function SearchAutocomplete({
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [active, setActive] = useState(-1);
+    const [recentSearches, setRecentSearches] = useState<string[]>([]);
+    const [showRecent, setShowRecent] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // Load recent searches on mount
+    useEffect(() => {
+        setRecentSearches(getRecentSearches());
+    }, []);
 
     const fetchSuggestions = useCallback(async (q: string) => {
         if (q.length < 2) {
@@ -39,6 +67,7 @@ export function SearchAutocomplete({
             return;
         }
         setLoading(true);
+        setShowRecent(false);
         try {
             const res = await typesenseClient
                 .collections("products")
@@ -73,12 +102,21 @@ export function SearchAutocomplete({
         const handler = (e: MouseEvent) => {
             if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
                 setOpen(false);
+                setShowRecent(false);
                 setActive(-1);
             }
         };
         document.addEventListener("mousedown", handler);
         return () => document.removeEventListener("mousedown", handler);
     }, []);
+
+    const handleFocus = () => {
+        if (value.length >= 2 && suggestions.length > 0) {
+            setOpen(true);
+        } else if (value.length < 2 && recentSearches.length > 0) {
+            setShowRecent(true);
+        }
+    };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (!open) return;
@@ -87,19 +125,39 @@ export function SearchAutocomplete({
         else if (e.key === "Enter" && active >= 0) {
             e.preventDefault();
             const p = suggestions[active];
+            saveRecentSearch(p.name);
             router.push(`/${branchId}/product/${p.id}`);
             setOpen(false);
             onChange(p.name);
+        } else if (e.key === "Enter" && value.trim().length >= 2) {
+            // Save the search query when user hits enter
+            saveRecentSearch(value);
+            setRecentSearches(getRecentSearches());
         } else if (e.key === "Escape") {
             setOpen(false);
+            setShowRecent(false);
             setActive(-1);
         }
     };
 
     const handleSelect = (p: Product) => {
+        saveRecentSearch(p.name);
+        setRecentSearches(getRecentSearches());
         router.push(`/${branchId}/product/${p.id}`);
         setOpen(false);
+        setShowRecent(false);
         onChange("");
+    };
+
+    const handleRecentClick = (term: string) => {
+        onChange(term);
+        setShowRecent(false);
+    };
+
+    const handleClearRecent = () => {
+        clearRecentSearches();
+        setRecentSearches([]);
+        setShowRecent(false);
     };
 
     return (
@@ -114,7 +172,7 @@ export function SearchAutocomplete({
                     value={value}
                     onChange={e => onChange(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    onFocus={() => suggestions.length > 0 && setOpen(true)}
+                    onFocus={handleFocus}
                     placeholder="Search products..."
                     className={inputClassName ?? (mobile
                         ? "w-full bg-neutral-100/80 border border-transparent focus:bg-white focus:border-indigo-500 rounded-full py-2.5 pl-11 pr-10 text-sm text-neutral-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all font-medium placeholder:text-neutral-400"
@@ -123,13 +181,46 @@ export function SearchAutocomplete({
                 />
                 {value && (
                     <button
-                        onClick={() => { onChange(""); setSuggestions([]); setOpen(false); }}
+                        onClick={() => { onChange(""); setSuggestions([]); setOpen(false); setShowRecent(false); }}
                         className="absolute inset-y-0 right-0 pr-4 flex items-center text-neutral-400 hover:text-neutral-600"
                     >
                         <X className="h-4 w-4" />
                     </button>
                 )}
             </div>
+
+            {/* Recent Searches Dropdown */}
+            {showRecent && !open && recentSearches.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-2 z-[200] bg-white rounded-2xl shadow-2xl border border-neutral-100 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="flex items-center justify-between px-4 py-2.5 border-b border-neutral-50">
+                        <span className="text-[11px] font-bold text-neutral-500 uppercase tracking-wider flex items-center gap-1.5">
+                            <Clock className="w-3 h-3" /> Recent Searches
+                        </span>
+                        <button
+                            onMouseDown={handleClearRecent}
+                            className="text-[10px] font-semibold text-red-400 hover:text-red-600 flex items-center gap-1 transition-colors"
+                        >
+                            <Trash2 className="w-3 h-3" /> Clear
+                        </button>
+                    </div>
+                    <ul className="py-1">
+                        {recentSearches.map((term, i) => (
+                            <li key={i}>
+                                <button
+                                    onMouseDown={() => handleRecentClick(term)}
+                                    className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-indigo-50 transition-colors"
+                                >
+                                    <Clock className="w-3.5 h-3.5 text-neutral-300 flex-shrink-0" />
+                                    <span className="text-sm font-medium text-neutral-700 truncate">{term}</span>
+                                    <svg className="w-3 h-3 text-neutral-300 flex-shrink-0 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 17l9.2-9.2M17 17V7H7" />
+                                    </svg>
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
 
             {/* Suggestions Dropdown */}
             {open && suggestions.length > 0 && (
