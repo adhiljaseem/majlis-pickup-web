@@ -17,10 +17,11 @@ interface OrderData {
 }
 
 const STEPS = [
-    { id: "confirmed", label: "Order Confirmed", icon: CheckCircle2 },
-    { id: "preparing", label: "Preparing Order", icon: Package },
-    { id: "ready_for_pickup", label: "Ready for Pickup", icon: Car },
-    { id: "completed", label: "Completed", icon: CheckCircle }
+    { id: "pending", label: "Order Received", icon: CheckCircle2 },
+    { id: "confirmed", label: "Confirmed", icon: CheckCircle2 },
+    { id: "preparing_order", label: "Preparing Order", icon: Package },
+    { id: "ready", label: "Ready for Pickup", icon: Car },
+    { id: "picked_up", label: "Picked Up", icon: CheckCircle }
 ];
 
 function TrackContent({ branchId }: { branchId: string }) {
@@ -240,10 +241,11 @@ function TrackContent({ branchId }: { branchId: string }) {
                                         </h4>
                                         {isCurrent && (
                                             <p className="text-sm text-neutral-500 mt-1 font-medium animate-in fade-in duration-500">
-                                                {step.id === 'confirmed' && 'Branch has received your order.'}
-                                                {step.id === 'preparing' && 'Staff are bagging your items now.'}
-                                                {step.id === 'ready_for_pickup' && 'Park in the Express Zone, it is ready!'}
-                                                {step.id === 'completed' && 'Delivered to your car. Thank you!'}
+                                                {step.id === 'pending' && 'Branch has received your order.'}
+                                                {step.id === 'confirmed' && 'Your order has been confirmed.'}
+                                                {step.id === 'preparing_order' && 'Staff are bagging your items now.'}
+                                                {step.id === 'ready' && 'Park in the Express Zone, it is ready!'}
+                                                {step.id === 'picked_up' && 'Delivered to your car. Thank you!'}
                                             </p>
                                         )}
                                     </div>

@@ -43,16 +43,21 @@ export function useTypesenseSearch(branchId: string) {
     const [results, setResults] = useState<Product[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(false);
 
-    const searchProducts = async (query: string = "*") => {
+    const searchProducts = async (query: string = "*", isNextPage: boolean = false) => {
         setLoading(true);
         setError(null);
         try {
+            const currentPage = isNextPage ? page + 1 : 1;
+            const perPage = 20;
+
             const searchParameters = {
                 q: query || "*",
-                query_by: "name,brand,category,subcategory,description",
-                per_page: 100,
-                page: 1,
+                query_by: "name,brand,category,subcategory,subsubcategory,barcodes,tags,searchKeywords,description",
+                per_page: perPage,
+                page: currentPage,
             };
 
             const response = await typesenseClient
@@ -70,7 +75,18 @@ export function useTypesenseSearch(branchId: string) {
                 .map((doc) => resolveForBranch(doc, branchId))
                 .filter((p): p is Product => p !== null);
 
-            setResults(resolved);
+            if (isNextPage) {
+                setResults(prev => [...prev, ...resolved]);
+                setPage(currentPage);
+            } else {
+                setResults(resolved);
+                setPage(1);
+            }
+
+            // Simple check for more pages based on response
+            const foundCount = response.found || 0;
+            setHasMore(foundCount > (currentPage * perPage));
+
         } catch (err: unknown) {
             console.error("Typesense search failed:", err);
             setError("Unable to fetch products. Please check your connection.");
@@ -79,5 +95,5 @@ export function useTypesenseSearch(branchId: string) {
         }
     };
 
-    return { searchProducts, results, loading, error };
+    return { searchProducts, results, loading, error, page, hasMore };
 }

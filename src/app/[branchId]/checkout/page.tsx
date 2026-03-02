@@ -80,7 +80,7 @@ export default function CheckoutPage({ params }: { params: Promise<{ branchId: s
                     paymentMethod: "Cash On pickup",
                     pointsRedeemed: 0,
                     smallOrderFee: 0,
-                    status: "confirmed",
+                    status: "pending",
                     totalAmount: cartTotal,
                     userEmail: "",
                     userId: userId,

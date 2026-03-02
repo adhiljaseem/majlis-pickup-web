@@ -12,99 +12,8 @@ import { hapticSoft } from "../../lib/haptics";
 import NextLink from "next/link";
 import { MobileCartSummary } from "../../components/MobileCartSummary";
 import Image from "next/image";
+import { ProductCard } from "../../components/ProductCard";
 
-function ProductImage({ src, alt }: { src: string; alt: string }) {
-    const [failed, setFailed] = useImageState(false);
-    if (failed) return <div className="w-full h-full flex items-center justify-center text-neutral-300 font-medium text-xs">No Image</div>;
-    return (
-        <Image
-            src={src}
-            alt={alt}
-            fill
-            sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
-            className="object-cover group-hover:scale-105 transition-transform duration-500"
-            onError={() => setFailed(true)}
-        />
-    );
-}
-
-function ProductCard({ product, branchId }: { product: Product, branchId: string }) {
-    const router = useRouter();
-    const { addToCart, items, updateQuantity } = useCart();
-    const cartItem = items.find(i => i.id === product.id);
-    const isSelected = !!cartItem && cartItem.quantity > 0;
-    const hasDiscount = product.offerPrice > 0 && product.offerPrice < product.price;
-    const displayPrice = hasDiscount ? product.offerPrice : product.price;
-    const outOfStock = product.stock <= 0;
-
-    return (
-        <NextLink
-            href={`/${branchId}/product/${product.id}`}
-            className={`bg-white rounded-2xl p-4 shadow-sm border transition-all group flex flex-col h-full cursor-pointer
-            ${isSelected ? 'border-indigo-500 ring-1 ring-indigo-500/10 bg-indigo-50/5' : 'border-neutral-100 hover:border-indigo-100'} 
-            ${outOfStock ? 'opacity-60' : 'hover:shadow-md'}`}>
-            <div className="aspect-square rounded-xl bg-neutral-50 mb-3 overflow-hidden relative flex items-center justify-center">
-                {product.imageUrl ? (
-                    <ProductImage src={product.imageUrl} alt={product.name} />
-                ) : (
-                    <div className="text-neutral-300 font-medium text-xs">No Image</div>
-                )}
-                {hasDiscount && (
-                    <span className="absolute top-2 left-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
-                        OFFER
-                    </span>
-                )}
-                {outOfStock && (
-                    <div className="absolute inset-0 bg-white/60 flex items-center justify-center">
-                        <span className="bg-neutral-900 text-white text-xs font-bold px-3 py-1 rounded-full">Out of Stock</span>
-                    </div>
-                )}
-                {!outOfStock && (
-                    <div className="absolute bottom-2 right-2 z-10">
-                        {cartItem ? (
-                            <div className="flex items-center gap-2 bg-white/80 backdrop-blur-md rounded-full p-1 shadow-lg border border-white/40 ring-1 ring-black/5 animate-in fade-in zoom-in duration-200">
-                                <button
-                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); hapticSoft(); updateQuantity(product.id, cartItem.quantity - 1); }}
-                                    className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center text-neutral-600 hover:text-red-500 hover:bg-red-50 transition-colors text-lg font-bold"
-                                >
-                                    -
-                                </button>
-                                <span key={cartItem.quantity} className="text-sm font-bold min-w-[1.5rem] text-center text-neutral-900 animate-pop">
-                                    {cartItem.quantity}
-                                </span>
-                                <button
-                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); hapticSoft(); addToCart(product); }}
-                                    className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center text-neutral-600 hover:text-indigo-600 hover:bg-indigo-50 transition-colors text-lg font-bold"
-                                >
-                                    +
-                                </button>
-                            </div>
-                        ) : (
-                            <button
-                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); hapticSoft(); addToCart(product); }}
-                                className="h-9 w-9 rounded-full bg-neutral-900/90 backdrop-blur-sm text-white flex items-center justify-center hover:bg-indigo-600 transition-all shadow-lg hover:scale-110 active:scale-95 group/btn"
-                                aria-label="Add to cart"
-                            >
-                                <span className="text-xl leading-none mb-0.5 group-hover/btn:rotate-90 transition-transform">+</span>
-                            </button>
-                        )}
-                    </div>
-                )}
-            </div>
-            <div className="flex flex-col flex-1">
-                <h4 className="font-semibold text-sm mb-0.5 line-clamp-2 text-neutral-800">{product.name}</h4>
-                <div className="mt-auto pt-2 flex items-center justify-between">
-                    <div className="flex flex-col">
-                        <span className="font-bold text-indigo-600 text-base">QAR {displayPrice.toFixed(2)}</span>
-                        {hasDiscount && (
-                            <span className="text-[10px] text-neutral-400 line-through">QAR {product.price.toFixed(2)}</span>
-                        )}
-                    </div>
-                </div>
-            </div>
-        </NextLink>
-    );
-}
 
 export default function BranchHomePage({
     params,
@@ -113,7 +22,7 @@ export default function BranchHomePage({
 }) {
     const { branchId } = use(params);
     const { searchQuery } = useCart();
-    const { results, loading, error, searchProducts } = useTypesenseSearch(branchId);
+    const { results, loading, error, searchProducts, hasMore } = useTypesenseSearch(branchId);
 
     // Initial load
     useEffect(() => {
@@ -163,21 +72,43 @@ export default function BranchHomePage({
                     {searchQuery ? `Search Results for "${searchQuery}"` : "Available Products"}
                 </h3>
 
-                {loading ? (
+                {loading && results.length === 0 ? (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6">
                         {[...Array(10)].map((_, i) => (
                             <ProductSkeleton key={i} />
                         ))}
                     </div>
                 ) : results.length > 0 ? (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6">
-                        {results.map((product) => (
-                            <ProductCard
-                                key={product.id}
-                                product={product}
-                                branchId={branchId}
-                            />
-                        ))}
+                    <div className="space-y-8">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6">
+                            {results.map((product) => (
+                                <ProductCard
+                                    key={product.id}
+                                    product={product}
+                                    branchId={branchId}
+                                />
+                            ))}
+                        </div>
+
+                        {/* Pagination / Show More */}
+                        {hasMore && (
+                            <div className="flex justify-center pt-4">
+                                <button
+                                    onClick={() => searchProducts(searchQuery, true)}
+                                    disabled={loading}
+                                    className="px-8 py-3 bg-white border border-neutral-200 rounded-full font-bold text-neutral-700 hover:bg-neutral-50 hover:border-indigo-200 transition-all shadow-sm flex items-center gap-2 disabled:opacity-50"
+                                >
+                                    {loading ? (
+                                        <>
+                                            <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                                            Loading...
+                                        </>
+                                    ) : (
+                                        "Show More Products"
+                                    )}
+                                </button>
+                            </div>
+                        )}
                     </div>
                 ) : !error && (
                     <div className="py-20 flex flex-col items-center justify-center text-center bg-white rounded-3xl border border-neutral-100 shadow-sm">

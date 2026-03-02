@@ -63,6 +63,6 @@ export interface PickupOrder {
     carNumber: string;
     items: CartItem[];
     totalAmount: number;
-    status: "pending" | "preparing" | "ready" | "completed" | "cancelled";
+    status: "pending" | "confirmed" | "preparing_order" | "ready" | "picked_up" | "cancelled";
     createdAt: unknown;
 }

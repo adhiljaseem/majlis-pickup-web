@@ -10,6 +10,7 @@ import { Product, TypesenseProduct } from "../../../../types";
 import { hapticSoft } from "../../../../lib/haptics";
 import NextLink from "next/link";
 import Image from "next/image";
+import { ProductCard } from "../../../../components/ProductCard";
 
 export default function ProductDetailsPage({
     params: paramsPromise,
@@ -233,17 +234,7 @@ export default function ProductDetailsPage({
                     </h2>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
                         {relatedProducts.map(p => (
-                            <NextLink key={p.id} href={`/${params.branchId}/product/${p.id}`} className="group">
-                                <div className="aspect-square rounded-3xl bg-neutral-50 p-6 flex items-center justify-center mb-3 border border-neutral-100 group-hover:border-indigo-100 transition-colors relative overflow-hidden">
-                                    {p.imageUrl ? (
-                                        <Image src={p.imageUrl} alt={p.name} fill sizes="(max-width: 768px) 50vw, 25vw" className="object-contain group-hover:scale-110 transition-transform duration-500 p-6" />
-                                    ) : (
-                                        <div className="text-[10px] text-neutral-300">No Image</div>
-                                    )}
-                                </div>
-                                <h4 className="text-sm font-bold text-neutral-800 mb-1 line-clamp-1 group-hover:text-indigo-600 transition-colors">{p.name}</h4>
-                                <p className="text-sm font-black text-indigo-600">QAR {(p.offerPrice || p.price).toFixed(2)}</p>
-                            </NextLink>
+                            <ProductCard key={p.id} product={p} branchId={params.branchId} />
                         ))}
                     </div>
                 </div>

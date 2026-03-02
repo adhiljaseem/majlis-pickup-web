@@ -1,6 +1,6 @@
 "use client";
 
-import { ShoppingBag, Store } from "lucide-react";
+import { ShoppingBag, Store, PackageSearch } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { ReactNode, use } from "react";
@@ -61,6 +61,15 @@ export default function BranchLayout({
                             />
                         </div>
                     )}
+
+                    {/* Track Order Icon */}
+                    <Link
+                        href={`/${branchId}/track`}
+                        className="p-2 text-neutral-600 hover:text-indigo-600 transition-colors hover:scale-105"
+                        title="Track Order"
+                    >
+                        <PackageSearch className="w-6 h-6 sm:w-7 sm:h-7" />
+                    </Link>
 
                     {/* Cart Icon */}
                     <Link href={`/${branchId}/cart`} className="relative shrink-0 p-2 transition-transform hover:scale-105">
