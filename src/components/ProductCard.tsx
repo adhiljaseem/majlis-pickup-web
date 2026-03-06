@@ -127,7 +127,7 @@ export function ProductCard({ product, branchId }: { product: Product, branchId:
                                     </span>
                                     <button
                                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); hapticSoft(); updateQuantity(product.id, cartItem.quantity + 1); }}
-                                        disabled={outOfStock || cartItem.quantity >= (product.maxPurchase || 999) || cartItem.quantity >= product.stock}
+                                        disabled={outOfStock || cartItem.quantity >= (product.maxPurchase ?? 999) || cartItem.quantity >= product.stock}
                                         className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center text-neutral-600 hover:text-indigo-600 hover:bg-indigo-50 transition-colors text-lg font-bold disabled:opacity-50 disabled:hover:bg-white disabled:hover:text-neutral-600 disabled:cursor-not-allowed"
                                     >
                                         +

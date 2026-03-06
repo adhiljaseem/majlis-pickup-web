@@ -36,7 +36,7 @@ export function resolveForBranch(
         offerPrice: parseFloat(bp.offerPrice) || 0,
         stock,
         minPurchase: parseInt(bp.minPurchase, 10) || 1,
-        maxPurchase: bp.maxPurchase ? parseInt(bp.maxPurchase, 10) : 999, // default to high number if no limit
+        maxPurchase: bp.maxPurchase ? parseInt(bp.maxPurchase, 10) || 999 : 999, // default to high number if no limit
     };
 }
 

@@ -222,7 +222,7 @@ export default function ProductDetailsPage({
                                     <span className="text-xl font-black w-10 text-center">{cartItem.quantity}</span>
                                     <button
                                         onClick={() => { hapticSoft(); updateQuantity(product.id, cartItem.quantity + 1); }}
-                                        disabled={outOfStock || cartItem.quantity >= (product.maxPurchase || 999) || cartItem.quantity >= product.stock}
+                                        disabled={outOfStock || cartItem.quantity >= (product.maxPurchase ?? 999) || cartItem.quantity >= product.stock}
                                         className="w-12 h-12 rounded-xl bg-neutral-50 flex items-center justify-center text-neutral-600 hover:text-indigo-600 hover:bg-indigo-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         <Plus className="w-5 h-5" />
