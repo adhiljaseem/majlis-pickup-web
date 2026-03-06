@@ -4,6 +4,7 @@ import Script from "next/script";
 import "./globals.css";
 import SecurityDeterrent from "../components/SecurityDeterrent";
 import { CartProvider } from "../context/CartContext";
+import { WishlistProvider } from "../context/WishlistContext";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
@@ -46,8 +47,10 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <CartProvider>
-          <SecurityDeterrent />
-          {children}
+          <WishlistProvider>
+            <SecurityDeterrent />
+            {children}
+          </WishlistProvider>
         </CartProvider>
         <Analytics />
         <SpeedInsights />

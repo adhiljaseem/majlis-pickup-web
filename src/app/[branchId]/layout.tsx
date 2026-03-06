@@ -1,6 +1,6 @@
 "use client";
 
-import { ShoppingBag, Store, PackageSearch } from "lucide-react";
+import { ShoppingBag, Store, PackageSearch, Heart } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { ReactNode, use, useState, useEffect } from "react";
@@ -64,16 +64,16 @@ export default function BranchLayout({
                         </div>
                     </Link>
 
-                    {/* Header Search Bar (Only shown on home page) */}
-                    {isHome && (
-                        <div className="flex-1 max-w-2xl hidden sm:block mx-4">
+                    {/* Header Search Bar */}
+                    <div className="flex-1 max-w-2xl hidden sm:block mx-4">
+                        {(isHome || pathname.includes('/product/')) && (
                             <SearchAutocomplete
                                 branchId={branchId}
                                 value={searchQuery}
                                 onChange={setSearchQuery}
                             />
-                        </div>
-                    )}
+                        )}
+                    </div>
 
                     {/* Track Order Icon */}
                     <Link
@@ -85,6 +85,15 @@ export default function BranchLayout({
                         title="Track Order"
                     >
                         <PackageSearch className="w-6 h-6 sm:w-7 sm:h-7" />
+                    </Link>
+
+                    {/* Wishlist Icon */}
+                    <Link
+                        href={`/${branchId}/wishlist`}
+                        className="p-2 text-neutral-600 hover:text-pink-500 transition-colors hover:scale-105"
+                        title="Wishlist"
+                    >
+                        <Heart className="w-6 h-6 sm:w-7 sm:h-7" />
                     </Link>
 
                     {/* Cart Icon with Animation */}
@@ -117,8 +126,8 @@ export default function BranchLayout({
                     </Link>
                 </div>
 
-                {/* Mobile Search Bar (Below header on small screens) */}
-                {isHome && (
+                {/* Mobile Search Bar */}
+                {(isHome || pathname.includes('/product/')) && (
                     <div className="sm:hidden px-4 pb-3">
                         <SearchAutocomplete
                             branchId={branchId}

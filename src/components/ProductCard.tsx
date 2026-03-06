@@ -1,6 +1,7 @@
 "use client";
 
 import { useCart } from "../context/CartContext";
+import { useWishlist } from "../context/WishlistContext";
 import { Product, TypesenseProduct } from "../types";
 import { useEffect, useState } from "react";
 import { hapticSoft } from "../lib/haptics";
@@ -9,7 +10,7 @@ import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { typesenseClient } from "../lib/typesense";
 import { resolveForBranch } from "../hooks/useTypesenseSearch";
-import { X, Sparkles } from "lucide-react";
+import { X, Sparkles, Heart } from "lucide-react";
 
 export function ProductImage({ src, alt }: { src: string; alt: string }) {
     const [failed, setFailed] = useState(false);
@@ -28,6 +29,7 @@ export function ProductImage({ src, alt }: { src: string; alt: string }) {
 
 export function ProductCard({ product, branchId }: { product: Product, branchId: string }) {
     const { addToCart, items, updateQuantity } = useCart();
+    const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();
     const [showAlternatives, setShowAlternatives] = useState(false);
     const [alternatives, setAlternatives] = useState<Product[]>([]);
     const [loadingAlts, setLoadingAlts] = useState(false);
@@ -37,6 +39,7 @@ export function ProductCard({ product, branchId }: { product: Product, branchId:
     const hasDiscount = product.offerPrice > 0 && product.offerPrice < product.price;
     const displayPrice = hasDiscount ? product.offerPrice : product.price;
     const outOfStock = product.stock <= 0;
+    const isWishlisted = isInWishlist(product.id);
 
     const fetchAlternatives = async () => {
         if (alternatives.length > 0) return;
@@ -84,10 +87,21 @@ export function ProductCard({ product, branchId }: { product: Product, branchId:
                         <div className="text-neutral-300 font-medium text-xs">No Image</div>
                     )}
                     {hasDiscount && (
-                        <span className="absolute top-2 left-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
+                        <span className="absolute top-2 left-2 z-10 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
                             OFFER
                         </span>
                     )}
+                    <button
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            hapticSoft();
+                            isWishlisted ? removeFromWishlist(product.id) : addToWishlist(product);
+                        }}
+                        className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-white/60 backdrop-blur-sm text-neutral-400 hover:text-pink-500 hover:bg-white shadow-sm transition-all"
+                    >
+                        <Heart className={`w-4 h-4 ${isWishlisted ? "fill-pink-500 text-pink-500" : ""}`} />
+                    </button>
                     {outOfStock && (
                         <div
                             onClick={handleOutOfStockClick}
@@ -112,8 +126,9 @@ export function ProductCard({ product, branchId }: { product: Product, branchId:
                                         {cartItem.quantity}
                                     </span>
                                     <button
-                                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); hapticSoft(); addToCart(product); }}
-                                        className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center text-neutral-600 hover:text-indigo-600 hover:bg-indigo-50 transition-colors text-lg font-bold"
+                                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); hapticSoft(); updateQuantity(product.id, cartItem.quantity + 1); }}
+                                        disabled={outOfStock || cartItem.quantity >= (product.maxPurchase || 999) || cartItem.quantity >= product.stock}
+                                        className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center text-neutral-600 hover:text-indigo-600 hover:bg-indigo-50 transition-colors text-lg font-bold disabled:opacity-50 disabled:hover:bg-white disabled:hover:text-neutral-600 disabled:cursor-not-allowed"
                                     >
                                         +
                                     </button>

@@ -1,9 +1,10 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
-import { Link, ShoppingBag, ArrowLeft, Plus, Minus, Share2 } from "lucide-react";
+import { Link as ReactLink, ShoppingBag, ArrowLeft, Plus, Minus, Share2, Heart } from "lucide-react";
 import { useRouter, useParams } from "next/navigation";
 import { useCart } from "../../../../context/CartContext";
+import { useWishlist } from "../../../../context/WishlistContext";
 import { typesenseClient } from "../../../../lib/typesense";
 import { resolveForBranch } from "../../../../hooks/useTypesenseSearch";
 import { Product, TypesenseProduct } from "../../../../types";
@@ -20,6 +21,7 @@ export default function ProductDetailsPage({
     const params = use(paramsPromise);
     const router = useRouter();
     const { items, addToCart, updateQuantity } = useCart();
+    const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();
 
     const [product, setProduct] = useState<Product | null>(null);
     const [loading, setLoading] = useState(true);
@@ -124,6 +126,8 @@ export default function ProductDetailsPage({
     }
 
     const hasDiscount = product.offerPrice > 0 && product.offerPrice < product.price;
+    const isWishlisted = isInWishlist(product.id);
+    const outOfStock = product.stock <= 0;
 
     return (
         <div className="max-w-5xl mx-auto pb-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -136,12 +140,24 @@ export default function ProductDetailsPage({
                     <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
                     Back
                 </button>
-                <button
-                    onClick={handleShare}
-                    className="p-2 text-neutral-400 hover:text-neutral-900 transition-colors"
-                >
-                    <Share2 className="w-5 h-5" />
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={(e) => {
+                            e.preventDefault();
+                            hapticSoft();
+                            isWishlisted ? removeFromWishlist(product.id) : addToWishlist(product);
+                        }}
+                        className="p-2 text-neutral-400 hover:text-pink-500 transition-colors bg-white rounded-full shadow-sm hover:shadow-md border border-neutral-100"
+                    >
+                        <Heart className={`w-5 h-5 ${isWishlisted ? "fill-pink-500 text-pink-500" : ""}`} />
+                    </button>
+                    <button
+                        onClick={handleShare}
+                        className="p-2 text-neutral-400 hover:text-neutral-900 transition-colors"
+                    >
+                        <Share2 className="w-5 h-5" />
+                    </button>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12 mb-16">
@@ -206,7 +222,8 @@ export default function ProductDetailsPage({
                                     <span className="text-xl font-black w-10 text-center">{cartItem.quantity}</span>
                                     <button
                                         onClick={() => { hapticSoft(); updateQuantity(product.id, cartItem.quantity + 1); }}
-                                        className="w-12 h-12 rounded-xl bg-neutral-50 flex items-center justify-center text-neutral-600 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                                        disabled={outOfStock || cartItem.quantity >= (product.maxPurchase || 999) || cartItem.quantity >= product.stock}
+                                        className="w-12 h-12 rounded-xl bg-neutral-50 flex items-center justify-center text-neutral-600 hover:text-indigo-600 hover:bg-indigo-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         <Plus className="w-5 h-5" />
                                     </button>

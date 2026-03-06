@@ -51,11 +51,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
         setItems(current => {
             const existing = current.find(item => item.id === product.id);
             if (existing) {
+                const newQuantity = Math.min(existing.quantity + 1, product.maxPurchase, product.stock);
                 return current.map(item =>
-                    item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+                    item.id === product.id ? { ...item, quantity: newQuantity } : item
                 );
             }
-            return [...current, { ...product, quantity: 1 }];
+            // Add with minPurchase if starting fresh, capped by stock/maxPurchase just in case
+            const initialAdd = Math.min(product.minPurchase, product.maxPurchase, product.stock);
+            if (initialAdd <= 0) return current; // Cannot add out of stock items
+            return [...current, { ...product, quantity: initialAdd }];
         });
         setLastAddedTimestamp(Date.now());
     };
@@ -70,9 +74,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
             return;
         }
         setItems(current =>
-            current.map(item =>
-                item.id === productId ? { ...item, quantity } : item
-            )
+            current.map(item => {
+                if (item.id === productId) {
+                    const validQuantity = Math.min(quantity, item.maxPurchase, item.stock);
+                    return { ...item, quantity: validQuantity };
+                }
+                return item;
+            })
         );
     };
 

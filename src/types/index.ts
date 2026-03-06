@@ -7,6 +7,7 @@ export interface BranchPriceInfo {
     offerPrice: string;      // e.g. "10"
     stock: string;           // e.g. "24"
     minPurchase: string;     // e.g. "1"
+    maxPurchase?: string;    // e.g. "10"
     updatedBy: string;
     lastUpdated: unknown;
 }
@@ -50,6 +51,7 @@ export interface Product {
     offerPrice: number;
     stock: number;
     minPurchase: number;
+    maxPurchase: number;
 }
 
 export interface CartItem extends Product {
