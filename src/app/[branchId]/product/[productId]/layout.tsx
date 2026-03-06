@@ -24,6 +24,7 @@ function resolveForBranch(doc: TypesenseProduct, branchId: string): Product | nu
         offerPrice: parseFloat(bp.offerPrice) || 0,
         stock,
         minPurchase: parseInt(bp.minPurchase, 10) || 1,
+        maxPurchase: bp.maxPurchase ? parseInt(bp.maxPurchase, 10) : 999,
     };
 }
 

@@ -1,0 +1,1 @@
+src/app/[branchId]/product/[productId]/layout.tsx(14,5): error TS2741: Property 'maxPurchase' is missing in type '{ id: string; name: string; description: string | undefined; imageUrl: string | undefined; category: string | undefined; subcategory: string | undefined; brand: string | undefined; ... 4 more ...; minPurchase: number; }' but required in type 'Product'.
