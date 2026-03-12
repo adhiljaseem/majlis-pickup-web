@@ -36,6 +36,18 @@ export interface TypesenseProduct {
     branchPrices: Record<string, BranchPriceInfo>;
 }
 
+export interface Category {
+    id: string;
+    name: string;
+    name_ar?: string;
+    name_hi?: string;
+    order: number;
+    visible: boolean;
+    visibleInBranches: string[];
+    iconUrl?: string;
+    assetIcon?: string;
+}
+
 // ─── Resolved Product (after extracting branch-specific data) ───
 
 export interface Product {

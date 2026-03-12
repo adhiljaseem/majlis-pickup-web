@@ -47,16 +47,22 @@ export function useTypesenseSearch(branchId: string) {
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(false);
 
-    const searchProducts = async (query: string = "*", isNextPage: boolean = false) => {
+    const searchProducts = async (query: string = "*", isNextPage: boolean = false, category?: string) => {
         setLoading(true);
         setError(null);
         try {
             const currentPage = isNextPage ? page + 1 : 1;
             const perPage = 20;
 
+            let filterBy = "";
+            if (category) {
+                filterBy = `category:=[${category}]`;
+            }
+
             const searchParameters = {
                 q: query || "*",
                 query_by: "name,brand,category,subcategory,subsubcategory,barcode,description",
+                filter_by: filterBy || undefined,
                 per_page: perPage,
                 page: currentPage,
             };
