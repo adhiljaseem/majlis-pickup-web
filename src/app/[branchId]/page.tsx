@@ -26,10 +26,12 @@ export default function BranchHomePage({
     const { results, loading, error, searchProducts, hasMore } = useTypesenseSearch(branchId);
     const [recentProducts, setRecentProducts] = useState<Product[]>([]);
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+    const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
+    const [selectedSubsubcategory, setSelectedSubsubcategory] = useState<string | null>(null);
 
     // Initial load
     useEffect(() => {
-        searchProducts(searchQuery, false, selectedCategory || undefined);
+        searchProducts(searchQuery, false, selectedCategory || undefined, selectedSubcategory || undefined, selectedSubsubcategory || undefined);
         // Load recent products for "Buy It Again"
         const saved = localStorage.getItem("pickup_recent_products");
         if (saved) {
@@ -39,12 +41,12 @@ export default function BranchHomePage({
                 console.error("Failed to parse recent products", e);
             }
         }
-    }, [branchId, selectedCategory]);
+    }, [branchId, selectedCategory, selectedSubcategory, selectedSubsubcategory]);
 
     // Handle typing search from global context
     useEffect(() => {
         const delayDebounceFn = setTimeout(() => {
-            searchProducts(searchQuery, false, selectedCategory || undefined);
+            searchProducts(searchQuery, false, selectedCategory || undefined, selectedSubcategory || undefined, selectedSubsubcategory || undefined);
         }, 300);
         return () => clearTimeout(delayDebounceFn);
     }, [searchQuery]);
@@ -82,7 +84,13 @@ export default function BranchHomePage({
             <CategoryFilter 
                 branchId={branchId}
                 selectedCategory={selectedCategory}
-                onSelect={setSelectedCategory}
+                selectedSubcategory={selectedSubcategory}
+                selectedSubsubcategory={selectedSubsubcategory}
+                onSelect={(cat, sub, subsub) => {
+                    setSelectedCategory(cat);
+                    setSelectedSubcategory(sub);
+                    setSelectedSubsubcategory(subsub);
+                }}
             />
 
             {/* Product Grid Area */}
@@ -134,7 +142,7 @@ export default function BranchHomePage({
                         {hasMore && (
                             <div className="flex justify-center pt-4">
                                 <button
-                                    onClick={() => searchProducts(searchQuery, true, selectedCategory || undefined)}
+                                    onClick={() => searchProducts(searchQuery, true, selectedCategory || undefined, selectedSubcategory || undefined, selectedSubsubcategory || undefined)}
                                     disabled={loading}
                                     className="px-8 py-3 bg-white border border-neutral-200 rounded-full font-bold text-neutral-700 hover:bg-neutral-50 hover:border-indigo-200 transition-all shadow-sm flex items-center gap-2 disabled:opacity-50"
                                 >
